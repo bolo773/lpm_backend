@@ -15,6 +15,8 @@
 #include "opencv2/videoio/videoio.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/highgui/highgui.hpp"
+#include <ctime>
+
 
 using namespace cv;
 
@@ -24,9 +26,8 @@ int wait_for_motion(VideoCapture* cap){
 
        float dist;
        clock_t ticks1, ticks2;
-       int pixdif = 0;
 
-       float threshold = 30.0f;
+       float threshold = 70.0f;
        cv::Mat diffImage;
 
        while(1){
@@ -36,8 +37,9 @@ int wait_for_motion(VideoCapture* cap){
 	ticks1=clock();
        	ticks2=ticks1;
 
-	while((ticks2/CLOCKS_PER_SEC-ticks1/CLOCKS_PER_SEC)<.5) ticks2=clock();
+	while((ticks2/CLOCKS_PER_SEC-ticks1/CLOCKS_PER_SEC)<.002) ticks2=clock();
 
+       int pixdif = 0;
        *cap >> frame2;
 
 	   cv::absdiff(frame1, frame2, diffImage);
@@ -55,8 +57,10 @@ int wait_for_motion(VideoCapture* cap){
 		   pixdif ++;
 	   }
           
-	   if(pixdif > 1000) return 1;
      }
+
+
+	   if(pixdif > 65000) return 1;
    }
 }
 
@@ -147,14 +151,22 @@ int main(int argc, char *argv[]){
 				detected_plates.push_back(plate.topNPlates[k]);
 				std::cout << "   : " << plate.topNPlates[k].characters << "t\ confidence: " << plate.topNPlates[k].overall_confidence;
 				std::cout << " pattern match: " << plate.topNPlates[k].matches_template << std::endl;
+				std::time_t t = std::time(0);
+				std::tm* now = std::localtime(&t);
+				std::cout << (now->tm_year +1900)
+				<< (now->tm_mon + 1) << '-'
+				<< now->tm_mday
+				<< "\n";
+
 			}
 	
 		}
 	}
 
+        
+	if (detected_plates.size() <= 0 ) continue;
 	alpr::AlprPlate best_fit = detected_plates[0];
 
-	if (detected_plates.size() <= 0 ) continue;
 	for(int i = 0; i < detected_plates.size(); i++  ){
 		if (best_fit.overall_confidence < detected_plates[i].overall_confidence){
 			best_fit = detected_plates[i];
@@ -162,9 +174,9 @@ int main(int argc, char *argv[]){
 	
 	}
 	std::cout << "best fit is :" << best_fit.characters << std::endl;
+        remove("images/frame0.png");
         remove("images/frame1.png");
-        remove("images/frame2.png");
-        remove("images/frame3.png");	
+        remove("images/frame2.png");	
 
       }
 //	closedir(images_folder);
