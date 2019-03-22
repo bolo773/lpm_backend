@@ -73,13 +73,14 @@ int main(int argc, char *argv[]){
        long int count = 0;
        VideoCapture cap;
        char strname[128] = {NULL};
-       char index[1];
+       char index[2];
        // open the default camera, use something different from 0 otherwise;
        // Check VideoCapture documentation.
        if(!cap.open(0))
        return 0;
 
-
+      //start loop
+      while(1) {
       wait_for_motion(&cap);
 
 
@@ -122,8 +123,8 @@ int main(int argc, char *argv[]){
 	struct dirent * dp;
 
 	while ((dp = readdir(images_folder)) != NULL) {
-		strcpy(path,getcwd(cwd,sizeof(cwd)));
-		strcat(path,"/images/");
+		strcpy(path,cwd);
+		strcat(path,"/");
 		strcat(path,dp->d_name);
 		
 		if (path[strlen(path) -1] == '.'){
@@ -136,7 +137,7 @@ int main(int argc, char *argv[]){
 
 		
 		alpr::AlprResults results = openalpr.recognize(path);
-
+                if(results.plates.size() <= 0) continue;
 		for (int i = 0; i < results.plates.size();i++){
 			alpr::AlprPlateResult plate = results.plates[i];
 			std::cout << "plate" << i << ":" << plate.topNPlates.size() << "result " << std::endl;
@@ -152,15 +153,19 @@ int main(int argc, char *argv[]){
 	}
 
 	alpr::AlprPlate best_fit = detected_plates[0];
+
+	if (detected_plates.size() <= 0 ) continue;
 	for(int i = 0; i < detected_plates.size(); i++  ){
 		if (best_fit.overall_confidence < detected_plates[i].overall_confidence){
 			best_fit = detected_plates[i];
 		}
 	
 	}
-	
 	std::cout << "best fit is :" << best_fit.characters << std::endl;
+        remove("images/frame1.png");
+        remove("images/frame2.png");
+        remove("images/frame3.png");	
 
-
-	closedir(images_folder);
+      }
+//	closedir(images_folder);
 }
