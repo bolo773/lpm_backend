@@ -16,12 +16,30 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include <ctime>
-
-
+#include  <thread>
+#include <pthread.h>
+#include <sqlite3.h>
+#include "mysql_connection.h"
+#include <cppconn/driver.h>
+#include <cppconn/exception.h>
+#include <cppconn/resultset.h>
+#include <cppconn/statement.h>
 using namespace cv;
 
 
+
+
+
+
+
 int wait_for_motion(VideoCapture* cap){
+       sql::Driver * driver;
+       sql::Connection *con;
+       sql::Statement *stmt;
+       //sql::ResultSet *res;
+       driver = get_driver_instance();
+
+
        Mat frame1, frame2;
 
        float dist;
@@ -64,9 +82,7 @@ int wait_for_motion(VideoCapture* cap){
    }
 }
 
-
-
-int main(int argc, char *argv[]){
+int monitor(){
 	
        char cwd[PATH_MAX];
        getcwd(cwd,sizeof(cwd));
@@ -136,7 +152,7 @@ int main(int argc, char *argv[]){
 		
 		}
 
-		std::cout << path << std::endl;
+		//std::cout << path << std::endl;
 
 
 		
@@ -181,3 +197,17 @@ int main(int argc, char *argv[]){
       }
 //	closedir(images_folder);
 }
+
+
+int main(int argc, char *argv[]){
+	std::thread thread_obj(monitor);
+	std::string input;
+	while(1){
+        std::getline (std::cin,input);
+	printf(">>>>>");
+
+	}
+
+}
+
+
