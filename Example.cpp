@@ -27,7 +27,7 @@ int wait_for_motion(VideoCapture* cap){
        float dist;
        clock_t ticks1, ticks2;
 
-       float threshold = 70.0f;
+       float threshold = 50.0f;
        cv::Mat diffImage;
 
        while(1){
