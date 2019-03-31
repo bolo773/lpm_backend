@@ -24,20 +24,60 @@
 #include <cppconn/exception.h>
 #include <cppconn/resultset.h>
 #include <cppconn/statement.h>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <algorithm>
+#include <iterator>
+
 using namespace cv;
 
+std::fstream *  init(){
+
+    //init log file
+
+    std::cout << "TTCore Version .01 \n";
+
+    std::cout << "Initializing log File";
+    std::fstream * logfile = new std::fstream;
+    logfile->open ("TTCore.log");
+    *logfile << "Session starts\n";
+
+    return logfile;
+
+}
 
 
+int interpreter(std::string input ){
 
+	              std::istringstream input_stream(input);
+		                std::vector<std::string> tokens{std::istream_iterator<std::string>{input_stream},
+					                                        std::istream_iterator<std::string>{}};
+
+
+   for(int i = 0; i < tokens.size(); i++){
+   
+      if(tokens[i] == "help"){
+      
+          std::cout << "help_printed \n";
+	  return 1;
+
+      } else return 0;
+   
+   } 
+
+
+}
 
 
 
 int wait_for_motion(VideoCapture* cap){
-       sql::Driver * driver;
-       sql::Connection *con;
-       sql::Statement *stmt;
-       //sql::ResultSet *res;
-       driver = get_driver_instance();
+//       sql::Driver * driver;
+//       sql::Connection *con;
+//       sql::Statement *stmt;
+//       sql::ResultSet *res;
+
+ //      driver = get_driver_instance();
 
 
        Mat frame1, frame2;
@@ -167,6 +207,7 @@ int monitor(){
 				detected_plates.push_back(plate.topNPlates[k]);
 				std::cout << "   : " << plate.topNPlates[k].characters << "t\ confidence: " << plate.topNPlates[k].overall_confidence;
 				std::cout << " pattern match: " << plate.topNPlates[k].matches_template << std::endl;
+
 				std::time_t t = std::time(0);
 				std::tm* now = std::localtime(&t);
 				std::cout << (now->tm_year +1900)
@@ -202,9 +243,12 @@ int monitor(){
 int main(int argc, char *argv[]){
 	std::thread thread_obj(monitor);
 	std::string input;
+	std::fstream * logptr = init();
 	while(1){
         std::getline (std::cin,input);
-	printf(">>>>>");
+	interpreter(input);
+	std::cout << "TTCore:>>>" ;
+
 
 	}
 
