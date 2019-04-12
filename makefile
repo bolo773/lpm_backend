@@ -1,4 +1,4 @@
 #!bin/bash
 
 all: Example
-	g++ Example.cpp -o ttapp `pkg-config --cflags --libs opencv` -lopenalpr -lpthread
+	g++ --std=c++11 TTcore.cpp -o ttapp `pkg-config --cflags --libs opencv` -lopenalpr -lpthread -lmysqlcppconn 

@@ -12,14 +12,14 @@
 #include <sstream>
 #include "opencv2/opencv.hpp"
 #include "opencv2/core/core.hpp"
-#include "opencv2/videoio/videoio.hpp"
+//#include "opencv2/videoio/videoio.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/highgui/highgui.hpp"
-#include "opencv2/imgcodecs.hpp"
+//#include "opencv2/imgcodecs.hpp"
 #include <ctime>
 #include  <thread>
 #include <pthread.h>
-#include <sqlite3.h>
+//#include <sqlite3.h>
 #include "mysql_connection.h"
 #include <cppconn/driver.h>
 #include <cppconn/exception.h>
@@ -48,7 +48,6 @@ std::fstream *  init(){
 
 }
 
-
 int interpreter(std::string input ){
 
     std::istringstream input_stream(input);
@@ -63,14 +62,20 @@ int interpreter(std::string input ){
           std::cout << "help_printed \n";
 	  return 1;
 
-      } else return 0;
+          
+      } else if(tokens[i] == "setSensitivity" ){
+           int  sensitivity = std::stoi(tokens[i+1]);
+
+            
+
+      }
    
    } 
 
 
 }
 
-
+/*
 void calcPSF(Mat& outputImg, Size filterSize, int len, double theta)
 {
     Mat h(filterSize, CV_32F, Scalar(0));
@@ -156,15 +161,9 @@ void edgetaper(const Mat& inputImg, Mat& outputImg, double gamma = 5.0, double b
 
 
 
-
+*/
 
 int wait_for_motion(VideoCapture* cap){
-//       sql::Driver * driver;
-//       sql::Connection *con;
-//       sql::Statement *stmt;
-//       sql::ResultSet *res;
-
- //      driver = get_driver_instance();
 
 
        Mat frame1, frame2;
@@ -210,6 +209,17 @@ int wait_for_motion(VideoCapture* cap){
 }
 
 int monitor(){
+
+       sql::Driver * driver;
+       sql::Connection *con;
+       sql::Statement *stmt;
+       sql::ResultSet *res;
+
+      driver = get_driver_instance();
+
+       con = driver->connect("tcp://127.0.0.1:3306", "camera", "infiniti");
+       con->setSchema("tagTracker");
+
 	
        char cwd[PATH_MAX];
        getcwd(cwd,sizeof(cwd));
@@ -223,8 +233,8 @@ int monitor(){
        char index[2];
        // open the default camera, use something different from 0 otherwise;
        // Check VideoCapture documentation.
-       if(!cap.open(0))
-       return 0;
+       if(!cap.open(1))
+       exit(0);
 
       //start loop
       while(1) {
@@ -242,19 +252,19 @@ int monitor(){
 
 
 	     // it needs to process even image only
-             Rect roi = Rect(0, 0, frame.cols & -2, frame.rows & -2);
+//             Rect roi = Rect(0, 0, frame.cols & -2, frame.rows & -2);
              //Hw calculation (start)
-             Mat Hw, h;
-             calcPSF(h, roi.size(), LEN, THETA);
-             calcWnrFilter(h, Hw, 1.0 / double(snr));
+  //           Mat Hw, h;
+      //       calcPSF(h, roi.size(), LEN, THETA);
+    //         calcWnrFilter(h, Hw, 1.0 / double(snr));
               //Hw calculation (stop)
-             frame.convertTo(frame, CV_32F);
-             edgetaper(frame, frame);
+     //        frame.convertTo(frame, CV_32F);
+       //      edgetaper(frame, frame);
     	     // filtering (start)
-    	    filter2DFreq(frame(roi), frame_pre_processed, Hw);
+    	 //   filter2DFreq(frame(roi), frame_pre_processed, Hw);
     	    // filtering (stop)
-    	   frame_pre_processed.convertTo(frame_pre_processed, CV_8U);
-   	   normalize(frame_pre_processed, frame_pre_processed, 0, 255, NORM_MINMAX);
+   // 	   frame_pre_processed.convertTo(frame_pre_processed, CV_8U);
+   //	   normalize(frame_pre_processed, frame_pre_processed, 0, 255, NORM_MINMAX);
 
 
              cap >> frame;
@@ -266,7 +276,7 @@ int monitor(){
 	     strcat(strname,"/frame");
              strcat(strname ,index);
              strcat(strname, ".png");
-             imwrite(strname,frame_pre_processed,compression_params);
+             imwrite(strname,frame,compression_params);
              
 
              if( frame.empty() ) break; // end of video stream
@@ -341,6 +351,22 @@ int monitor(){
 	
 	}
 	std::cout << "best fit is :" << best_fit.characters << std::endl;
+        
+      try{
+      stmt = con->createStatement();
+       res = stmt->executeQuery("insert into raw_data(tStamp,fileSize) values ('990319', 10)");
+        }
+
+         catch (sql::SQLException &e) {
+ std::cout << "# ERR: SQLException in " << __FILE__;
+  std::cout << "(" << __FUNCTION__ << ") on line "<< __LINE__ << std::endl;
+ std::cout << "# ERR: " << e.what();
+  std::cout << " (MySQL error code: " << e.getErrorCode();
+  std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;
+}
+
+
+
         remove("images/frame0.png");
         remove("images/frame1.png");
         remove("images/frame2.png");	
@@ -363,5 +389,3 @@ int main(int argc, char *argv[]){
 	}
 
 }
-
-
