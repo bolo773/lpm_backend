@@ -1,6 +1,5 @@
 #include "alpr.h"
 #include <stdio.h>
-#include <iostream>
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -12,14 +11,11 @@
 #include <sstream>
 #include "opencv2/opencv.hpp"
 #include "opencv2/core/core.hpp"
-//#include "opencv2/videoio/videoio.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/highgui/highgui.hpp"
-//#include "opencv2/imgcodecs.hpp"
 #include <ctime>
 #include  <thread>
 #include <pthread.h>
-//#include <sqlite3.h>
 #include "mysql_connection.h"
 #include <cppconn/driver.h>
 #include <cppconn/exception.h>
@@ -66,102 +62,11 @@ int interpreter(std::string input ){
       } else if(tokens[i] == "setSensitivity" ){
            int  sensitivity = std::stoi(tokens[i+1]);
 
-            
-
       }
    
    } 
 
-
 }
-
-/*
-void calcPSF(Mat& outputImg, Size filterSize, int len, double theta)
-{
-    Mat h(filterSize, CV_32F, Scalar(0));
-    Point point(filterSize.width / 2, filterSize.height / 2);
-    ellipse(h, point, Size(0, cvRound(float(len) / 2.0)), 90.0 - theta, 0, 360, Scalar(255), FILLED);
-    Scalar summa = sum(h);
-    outputImg = h / summa[0];
-}
-void fftshift(const Mat& inputImg, Mat& outputImg)
-{
-    outputImg = inputImg.clone();
-    int cx = outputImg.cols / 2;
-    int cy = outputImg.rows / 2;
-    Mat q0(outputImg, Rect(0, 0, cx, cy));
-    Mat q1(outputImg, Rect(cx, 0, cx, cy));
-    Mat q2(outputImg, Rect(0, cy, cx, cy));
-    Mat q3(outputImg, Rect(cx, cy, cx, cy));
-    Mat tmp;
-    q0.copyTo(tmp);
-    q3.copyTo(q0);
-    tmp.copyTo(q3);
-    q1.copyTo(tmp);
-    q2.copyTo(q1);
-    tmp.copyTo(q2);
-}
-
-void filter2DFreq(const Mat& inputImg, Mat& outputImg, const Mat& H)
-{
-    Mat planes[2] = { Mat_<float>(inputImg.clone()), Mat::zeros(inputImg.size(), CV_32F) };
-    Mat complexI;
-    merge(planes, 2, complexI);
-    dft(complexI, complexI, DFT_SCALE);
-    Mat planesH[2] = { Mat_<float>(H.clone()), Mat::zeros(H.size(), CV_32F) };
-    Mat complexH;
-    merge(planesH, 2, complexH);
-    Mat complexIH;
-    mulSpectrums(complexI, complexH, complexIH, 0);
-    idft(complexIH, complexIH);
-    split(complexIH, planes);
-    outputImg = planes[0];
-}
-
-void calcWnrFilter(const Mat& input_h_PSF, Mat& output_G, double nsr)
-{
-    Mat h_PSF_shifted;
-    fftshift(input_h_PSF, h_PSF_shifted);
-    Mat planes[2] = { Mat_<float>(h_PSF_shifted.clone()), Mat::zeros(h_PSF_shifted.size(), CV_32F) };
-    Mat complexI;
-    merge(planes, 2, complexI);
-    dft(complexI, complexI);
-    split(complexI, planes);
-    Mat denom;
-    pow(abs(planes[0]), 2, denom);
-    denom += nsr;
-    divide(planes[0], denom, output_G);
-}
-
-void edgetaper(const Mat& inputImg, Mat& outputImg, double gamma = 5.0, double beta = 0.2)
-{
-    int Nx = inputImg.cols;
-    int Ny = inputImg.rows;
-    Mat w1(1, Nx, CV_32F, Scalar(0));
-    Mat w2(Ny, 1, CV_32F, Scalar(0));
-    float* p1 = w1.ptr<float>(0);
-    float* p2 = w2.ptr<float>(0);
-    float dx = float(2.0 * CV_PI / Nx);
-    float x = float(-CV_PI);
-    for (int i = 0; i < Nx; i++)
-    {
-        p1[i] = float(0.5 * (tanh((x + gamma / 2) / beta) - tanh((x - gamma / 2) / beta)));
-        x += dx;
-    }
-    float dy = float(2.0 * CV_PI / Ny);
-    float y = float(-CV_PI);
-    for (int i = 0; i < Ny; i++)
-    {
-        p2[i] = float(0.5 * (tanh((y + gamma / 2) / beta) - tanh((y - gamma / 2) / beta)));
-        y += dy;
-    }
-    Mat w = w2 * w1;
-    multiply(inputImg, w, outputImg);
-}
-
-
-
-*/
 
 int wait_for_motion(VideoCapture* cap){
 
@@ -214,12 +119,45 @@ int monitor(){
        sql::Connection *con;
        sql::Statement *stmt;
        sql::ResultSet *res;
+       
+       std::vector<std::string> imp_veh;
 
       driver = get_driver_instance();
 
-       con = driver->connect("tcp://127.0.0.1:3306", "camera", "infiniti");
-       con->setSchema("tagTracker");
+       con = driver->connect("tcp://184.173.179.108:3306", "bolo7_tag_user", "infiniti");
+       con->setSchema("bolo773_ttcore");
 
+
+      std::string sql_q = "";
+
+      sql_q.append("select * from flagged_vehicles");
+
+      try{
+      stmt = con->createStatement();
+
+       res = stmt->executeQuery(sql_q.c_str());
+        }
+
+    catch (sql::SQLException &e) {
+    std::cout << "# ERR: SQLException in " << __FILE__;
+    std::cout << "(" << __FUNCTION__ << ") on line "<< __LINE__ << std::endl;
+    std::cout << "# ERR: " << e.what();
+    std::cout << " (MySQL error code: " << e.getErrorCode();
+    std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;
+   }
+
+   std::string s_sql="";
+
+    while (res->next()) {
+  // You can use either numeric offsets...
+  std::cout << "got important tag" << res->getString(2); // getInt(1) returns the first column
+
+  //std::string platename(res->getString.c_str());
+  imp_veh.push_back(res->getString(2));
+
+  // ... or column names for accessing results.
+  // The latter is recommended.
+  }
 	
        char cwd[PATH_MAX];
        getcwd(cwd,sizeof(cwd));
@@ -249,23 +187,6 @@ int monitor(){
              int LEN = 125;
              double THETA = 0;
 	     int snr = 700;
-
-
-	     // it needs to process even image only
-//             Rect roi = Rect(0, 0, frame.cols & -2, frame.rows & -2);
-             //Hw calculation (start)
-  //           Mat Hw, h;
-      //       calcPSF(h, roi.size(), LEN, THETA);
-    //         calcWnrFilter(h, Hw, 1.0 / double(snr));
-              //Hw calculation (stop)
-     //        frame.convertTo(frame, CV_32F);
-       //      edgetaper(frame, frame);
-    	     // filtering (start)
-    	 //   filter2DFreq(frame(roi), frame_pre_processed, Hw);
-    	    // filtering (stop)
-   // 	   frame_pre_processed.convertTo(frame_pre_processed, CV_8U);
-   //	   normalize(frame_pre_processed, frame_pre_processed, 0, 255, NORM_MINMAX);
-
 
              cap >> frame;
              std::vector<int> compression_params;
@@ -347,14 +268,72 @@ int monitor(){
 	for(int i = 0; i < detected_plates.size(); i++  ){
 		if (best_fit.overall_confidence < detected_plates[i].overall_confidence){
 			best_fit = detected_plates[i];
+                        
+
 		}
 	
 	}
+
 	std::cout << "best fit is :" << best_fit.characters << std::endl;
-        
+               int flagged = 0;
+               for (int j =0; j < imp_veh.size(); j++) {
+
+                         if(imp_veh[j] == best_fit.characters) printf("\n\n\n\n\n FLAGGED VEHICLE!!!!!!!!!!!!\n\n\n\n\n");
+                         flagged = 1;
+
+                     }
+
+
+
+
+      	time_t now;
+	
+	// Obtain current time
+	// time() returns the current time of the system as a time_t value
+	time(&now);
+
+	// Convert to local time format and print to stdout
+	printf("Today is : %s", ctime(&now));
+
+	// localtime converts a time_t value to calendar time and 
+	// returns a pointer to a tm structure with its members 
+	// filled with the corresponding values
+	struct tm *local = localtime(&now);
+
+       int hours = local->tm_hour;      	// get hours since midnight (0-23)
+       int minutes = local->tm_min;     	// get minutes passed after the hour (0-59)
+       int seconds = local->tm_sec;     	// get seconds passed after minute (0-59)
+
+       int day = local->tm_mday;        	// get day of month (1 to 31)
+       int month = local->tm_mon + 1;   	// get month of year (0 to 11)
+       int year = local->tm_year + 1900;	// get year since 1900
+
+
+
+      char buff[50];
+      strftime(buff, sizeof(buff), "%Y-%m-%d %H:%M:%S", local);
+
+      sql_q = "";
+      sql_q.append("insert into raw_data (tag_number,t_stamp, flagged) values ('");
+      sql_q.append(best_fit.characters);
+      sql_q.append("', ");
+      sql_q.append("'");
+      
+      std::ostringstream date_stream(buff);
+
+
+      sql_q.append(date_stream.str());
+
+      if (flagged)
+      sql_q.append("', FALSE );");
+      else sql_q.append("', TRUE );");
+
+      flagged = 0;
       try{
       stmt = con->createStatement();
-       res = stmt->executeQuery("insert into raw_data(tStamp,fileSize) values ('990319', 10)");
+
+       
+       res = stmt->executeQuery(sql_q.c_str());
         }
 
          catch (sql::SQLException &e) {
