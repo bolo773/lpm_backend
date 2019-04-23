@@ -14,7 +14,7 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include <ctime>
-#include  <thread>
+#include <thread>
 #include <pthread.h>
 #include "mysql_connection.h"
 #include <cppconn/driver.h>
@@ -70,25 +70,30 @@ int interpreter(std::string input ){
 
 int wait_for_motion(VideoCapture* cap){
 
-
        Mat frame1, frame2;
-
        float dist;
        clock_t ticks1, ticks2;
-
        float threshold = 50.0f;
        cv::Mat diffImage;
+       int pixdif = 0;
 
        while(1){
 
-       *cap >> frame1;
-
 	ticks1=clock();
+
        	ticks2=ticks1;
+
+        //wait between every initial capture
+        while((ticks2/CLOCKS_PER_SEC-ticks1/CLOCKS_PER_SEC)<.1) ticks2=clock();
+
+        *cap >> frame1;
+
+
+
 
 	while((ticks2/CLOCKS_PER_SEC-ticks1/CLOCKS_PER_SEC)<.002) ticks2=clock();
 
-       int pixdif = 0;
+       pixdif = 0;
        *cap >> frame2;
 
 	   cv::absdiff(frame1, frame2, diffImage);
@@ -115,28 +120,26 @@ int wait_for_motion(VideoCapture* cap){
 
 int monitor(){
 
-       sql::Driver * driver;
-       sql::Connection *con;
-       sql::Statement *stmt;
-       sql::ResultSet *res;
+    sql::Driver * driver;
+    sql::Connection *con;
+    sql::Statement *stmt;
+    sql::ResultSet *res;
        
-       std::vector<std::string> imp_veh;
+    std::vector<std::string> imp_veh;
 
-      driver = get_driver_instance();
+    driver = get_driver_instance();
 
-       con = driver->connect("tcp://184.173.179.108:3306", "bolo7_tag_user", "infiniti");
-       con->setSchema("bolo773_ttcore");
+    con = driver->connect("tcp://184.173.179.108:3306", "bolo7_tag_user", "infiniti");
+    con->setSchema("bolo773_ttcore");
 
+    std::string sql_q = "";
 
-      std::string sql_q = "";
+    sql_q.append("select * from flagged_vehicles");
 
-      sql_q.append("select * from flagged_vehicles");
-
-      try{
-      stmt = con->createStatement();
-
-       res = stmt->executeQuery(sql_q.c_str());
-        }
+    try{
+        stmt = con->createStatement();
+        res = stmt->executeQuery(sql_q.c_str());
+    }
 
     catch (sql::SQLException &e) {
     std::cout << "# ERR: SQLException in " << __FILE__;
@@ -144,72 +147,67 @@ int monitor(){
     std::cout << "# ERR: " << e.what();
     std::cout << " (MySQL error code: " << e.getErrorCode();
     std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;
-   }
+    }
 
-   std::string s_sql="";
+    std::string s_sql="";
 
     while (res->next()) {
-  // You can use either numeric offsets...
-  std::cout << "got important tag" << res->getString(2); // getInt(1) returns the first column
+    // You can use either numeric offsets...
+    std::cout << "got important tag" << res->getString(2); // getInt(1) returns the first column
 
-  //std::string platename(res->getString.c_str());
-  imp_veh.push_back(res->getString(2));
+    //std::string platename(res->getString.c_str());
+    imp_veh.push_back(res->getString(2));
 
-  // ... or column names for accessing results.
-  // The latter is recommended.
-  }
+    // ... or column names for accessing results.
+    // The latter is recommended.
+    }
 	
-       char cwd[PATH_MAX];
-       getcwd(cwd,sizeof(cwd));
+    char cwd[PATH_MAX];
+    getcwd(cwd,sizeof(cwd));
 
-       strcat(cwd, "/images");
-       mkdir(cwd,0700);
+    strcat(cwd, "/images");
+    mkdir(cwd,0700);
 
-       long int count = 0;
-       VideoCapture cap;
-       char strname[128] = {NULL};
-       char index[2];
-       // open the default camera, use something different from 0 otherwise;
-       // Check VideoCapture documentation.
-       if(!cap.open(1))
-       exit(0);
+    long int count = 0;
+    VideoCapture cap;
+    char strname[128] = {NULL};
+    char index[2];
+    // open the default camera, use something different from 0 otherwise;
+    // Check VideoCapture documentation.
+    if(!cap.open(1))
+    exit(0);
 
-      //start loop
-      while(1) {
-      wait_for_motion(&cap);
-
-
-       for(int i = 0; i < 3 ; i++)
-           {
-             Mat frame;
-	     Mat frame_pre_processed;
+   //start loop
+    while(1) {
+    wait_for_motion(&cap);
+        for(int i = 0; i < 3 ; i++) {
+            Mat frame;
+	    Mat frame_pre_processed;
               
-             int LEN = 125;
-             double THETA = 0;
-	     int snr = 700;
+            int LEN = 125;
+            double THETA = 0;
+	    int snr = 700;
 
-             cap >> frame;
-             std::vector<int> compression_params;
-             compression_params.push_back(CV_IMWRITE_PNG_COMPRESSION);
-             compression_params.push_back(9);
-             index[0] = 48 + i;
-             strcpy(strname,cwd);
-	     strcat(strname,"/frame");
-             strcat(strname ,index);
-             strcat(strname, ".png");
-             imwrite(strname,frame,compression_params);
-             
+            cap >> frame;
+            std::vector<int> compression_params;
+            compression_params.push_back(CV_IMWRITE_PNG_COMPRESSION);
+            compression_params.push_back(9);
+            index[0] = 48 + i;
+            strcpy(strname,cwd);
+	    strcat(strname,"/frame");
+            strcat(strname ,index);
+            strcat(strname, ".png");
+            imwrite(strname,frame,compression_params);
 
-             if( frame.empty() ) break; // end of video stream
-	  
-             imshow("this is you, smile! :)", frame);
-             if( waitKey(10) == 27 ) break; // stop capturing by pressing ESC
-         }
+            if( frame.empty() ) break; // end of video stream
+	    imshow("TTCore v.1:)", frame);
+            if( waitKey(10) == 27 ) break; // stop capturing by pressing ESC
+        }
 
-	alpr::Alpr openalpr("us","/etc/openalpr/openalpr.conf");
-	openalpr.setTopN(1);
+        alpr::Alpr openalpr("us","/etc/openalpr/openalpr.conf");
+        openalpr.setTopN(1);
 
-	std::vector<alpr::AlprPlate> detected_plates;
+        std::vector<alpr::AlprPlate> detected_plates;
 	
 	openalpr.setDefaultRegion("md");
 
@@ -314,7 +312,7 @@ int monitor(){
       strftime(buff, sizeof(buff), "%Y-%m-%d %H:%M:%S", local);
 
       sql_q = "";
-      sql_q.append("insert into raw_data (tag_number,t_stamp, flagged) values ('");
+      sql_q.append("insert into raw_data (tag_number,t_stamp, flagged, accuracy) values ('");
       sql_q.append(best_fit.characters);
       sql_q.append("', ");
       sql_q.append("'");
@@ -325,8 +323,10 @@ int monitor(){
       sql_q.append(date_stream.str());
 
       if (flagged)
-      sql_q.append("', FALSE );");
-      else sql_q.append("', TRUE );");
+      sql_q.append("', FALSE,  ");
+      else sql_q.append("', TRUE, ");
+      sql_q.append(std::to_string(best_fit.overall_confidence));
+      sql_q.append(");");      
 
       flagged = 0;
       try{
@@ -343,7 +343,6 @@ int monitor(){
   std::cout << " (MySQL error code: " << e.getErrorCode();
   std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;
 }
-
 
 
         remove("images/frame0.png");
