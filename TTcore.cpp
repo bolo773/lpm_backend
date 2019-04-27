@@ -26,6 +26,7 @@
 #include <sstream>
 #include <algorithm>
 #include <iterator>
+#include <sqlite3.h>
 
 using namespace cv;
 
@@ -129,14 +130,18 @@ int monitor(){
 
     driver = get_driver_instance();
 
-    con = driver->connect("tcp://184.173.179.108:3306", "bolo7_tag_user", "infiniti");
-    con->setSchema("bolo773_ttcore");
 
     std::string sql_q = "";
+  
+    int livedb = 1;    
 
     sql_q.append("select * from flagged_vehicles");
+    
 
     try{
+        
+        con = driver->connect("tcp://184.173.179.108:3306", "bolo7_tag_user", "infiniti");
+        con->setSchema("bolo773_ttcore");
         stmt = con->createStatement();
         res = stmt->executeQuery(sql_q.c_str());
     }
@@ -147,10 +152,28 @@ int monitor(){
     std::cout << "# ERR: " << e.what();
     std::cout << " (MySQL error code: " << e.getErrorCode();
     std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;
-    }
+    livedb = 0;
+
+    
+    } 
+
+    sqlite3 *backup_db;
+    
+    int rc = sqlite3_open("backup.db", &backup_db);
+ 
+
+    if( rc ) {
+      fprintf(stderr, "Warning! can't open backup database: %s\n", sqlite3_errmsg(backup_db));
+    } else {
+      fprintf(stdout, "Opened backup database successfully\n");
+   }
+
+
 
     std::string s_sql="";
 
+
+    if (livedb == 1){
     while (res->next()) {
     // You can use either numeric offsets...
     std::cout << "got important tag" << res->getString(2); // getInt(1) returns the first column
@@ -161,7 +184,7 @@ int monitor(){
     // ... or column names for accessing results.
     // The latter is recommended.
     }
-	
+}
     char cwd[PATH_MAX];
     getcwd(cwd,sizeof(cwd));
 
@@ -272,6 +295,8 @@ int monitor(){
 	
 	}
 
+
+        if (livedb == 1){
 	std::cout << "best fit is :" << best_fit.characters << std::endl;
                int flagged = 0;
                for (int j =0; j < imp_veh.size(); j++) {
@@ -280,6 +305,7 @@ int monitor(){
                          flagged = 1;
 
                      }
+        
 
 
 
@@ -296,6 +322,8 @@ int monitor(){
 	// localtime converts a time_t value to calendar time and 
 	// returns a pointer to a tm structure with its members 
 	// filled with the corresponding values
+
+        
 	struct tm *local = localtime(&now);
 
        int hours = local->tm_hour;      	// get hours since midnight (0-23)
@@ -329,6 +357,8 @@ int monitor(){
       sql_q.append(");");      
 
       flagged = 0;
+
+
       try{
       stmt = con->createStatement();
 
@@ -337,12 +367,12 @@ int monitor(){
         }
 
          catch (sql::SQLException &e) {
- std::cout << "# ERR: SQLException in " << __FILE__;
-  std::cout << "(" << __FUNCTION__ << ") on line "<< __LINE__ << std::endl;
- std::cout << "# ERR: " << e.what();
-  std::cout << " (MySQL error code: " << e.getErrorCode();
-  std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;
-}
+    std::cout << "# ERR: SQLException in " << __FILE__;
+    std::cout << "(" << __FUNCTION__ << ") on line "<< __LINE__ << std::endl;
+    std::cout << "# ERR: " << e.what();
+    std::cout << " (MySQL error code: " << e.getErrorCode();
+    std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;
+    }
 
 
         remove("images/frame0.png");
@@ -350,6 +380,7 @@ int monitor(){
         remove("images/frame2.png");	
 
       }
+}
 //	closedir(images_folder);
 }
 
