@@ -1,0 +1,100 @@
+#include "camera.hpp"
+
+int camera::monitor() {
+
+    cv::Mat frame1, frame2;
+    float dist;
+    clock_t ticks1, ticks2;
+    float threshold = 50.0f;
+    cv::Mat diffImage;
+    int pixdif = 0;
+
+    while(pixdif < 65000){
+
+        ticks1=clock();
+
+        ticks2=ticks1;
+
+        //wait between every initial capture
+        while((ticks2/CLOCKS_PER_SEC-ticks1/CLOCKS_PER_SEC)<.1) ticks2=clock();
+
+        this->video_capture >> frame1;
+
+        while((ticks2/CLOCKS_PER_SEC-ticks1/CLOCKS_PER_SEC)<.002) ticks2=clock();
+
+        pixdif = 0;
+        this->video_capture >> frame2;
+
+        cv::absdiff(frame1, frame2, diffImage);
+
+        cv::Mat foregroundMask = cv::Mat::zeros(diffImage.rows, diffImage.cols, CV_8UC1);
+
+        for(int j=0; j<diffImage.rows; ++j)
+        for(int i=0; i<diffImage.cols; ++i) {
+            cv::Vec3b pix = diffImage.at<cv::Vec3b>(j,i);
+            dist = (pix[0]*pix[0] + pix[1]*pix[1] + pix[2]*pix[2]);
+            if(dist>threshold) {
+               pixdif ++;
+           }
+        }
+    }
+    return 1;
+}
+
+std::vector<std::string> camera::grab_images(){
+   
+    printf("writing to file\n"); 
+    std::vector<std::string> filenames; 
+    char cwd[PATH_MAX];
+    getcwd(cwd,sizeof(cwd));
+    strcat(cwd, "/images");
+    mkdir(cwd,0700);
+    long int count = 0;
+    char strname[128] = {NULL};
+    char index[2] = {'\0'};
+
+
+    for(int i = 0; i < 3 ; i++) {
+        cv::Mat frame;
+        cv::Mat frame_pre_processed;
+
+        int LEN = 125;
+        double THETA = 0;
+        int snr = 700;
+    
+        std::time_t t1 = std::time(0);
+        std::tm* now = std::localtime(&t1);
+
+        char time_buff[50];
+        strftime(time_buff, sizeof(time_buff), "%Y-%m-%d:%H:%M:%S", now);
+
+        this->video_capture >> frame;
+        std::vector<int> compression_params;
+        compression_params.push_back(CV_IMWRITE_PNG_COMPRESSION);
+        compression_params.push_back(9);
+        index[0] = 48 + i;
+        strcpy(strname,cwd);
+        strcat(strname,"/plate_");
+        strcat(strname,index);
+        strcat(strname ,time_buff);
+        strcat(strname, ".png");
+        imwrite(strname,frame,compression_params);
+
+        printf("created file: %s \n", strname);
+        filenames.push_back(std::string(strname));
+
+        if( frame.empty() ) break; // end of video stream
+        imshow("TTCore v.1:)", frame);
+        if( cv::waitKey(10) == 27 ) break; // stop capturing by pressing ESC
+    }
+
+    return filenames;
+
+}
+
+camera::camera(int sensitivity, int index, int camera_index){
+    this->sensitivity=sensitivity;
+    this->index = index;
+    this->camera_index = index;
+    this->video_capture.open(camera_index);
+}

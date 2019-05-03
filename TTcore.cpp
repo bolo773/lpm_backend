@@ -115,7 +115,7 @@ int wait_for_motion(VideoCapture* cap){
      }
 
 
-	   if(pixdif > 65000) return 1;
+	   if(pixdif > 45000) return 1;
    }
 }
 
@@ -172,7 +172,6 @@ int monitor(){
 
     std::string s_sql="";
 
-
     if (livedb == 1){
     while (res->next()) {
     // You can use either numeric offsets...
@@ -190,7 +189,7 @@ int monitor(){
 
     strcat(cwd, "/images");
     mkdir(cwd,0700);
-
+   
     long int count = 0;
     VideoCapture cap;
     char strname[128] = {NULL};
@@ -217,7 +216,7 @@ int monitor(){
             compression_params.push_back(9);
             index[0] = 48 + i;
             strcpy(strname,cwd);
-	    strcat(strname,"/frame");
+	    strcat(strname,"/plate_");
             strcat(strname ,index);
             strcat(strname, ".png");
             imwrite(strname,frame,compression_params);
@@ -310,7 +309,7 @@ int monitor(){
 
 
 
-      	time_t now;
+     	time_t now;
 	
 	// Obtain current time
 	// time() returns the current time of the system as a time_t value
@@ -323,8 +322,8 @@ int monitor(){
 	// returns a pointer to a tm structure with its members 
 	// filled with the corresponding values
 
-        
-	struct tm *local = localtime(&now);
+//       std::tm* now = std::localtime(&t);
+       struct tm *local = localtime(&now);
 
        int hours = local->tm_hour;      	// get hours since midnight (0-23)
        int minutes = local->tm_min;     	// get minutes passed after the hour (0-59)
@@ -375,9 +374,9 @@ int monitor(){
     }
 
 
-        remove("images/frame0.png");
-        remove("images/frame1.png");
-        remove("images/frame2.png");	
+       // remove("images/frame0.png");
+       // remove("images/frame1.png");
+        remove("images/*");	
 
       }
 }
