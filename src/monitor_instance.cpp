@@ -1,13 +1,15 @@
 #include "monitor_instance.hpp"
 
-monitor_instance::monitor_instance(int camera_index, int livedb){
+monitor_instance::monitor_instance(int camera_index, int livedb, std::vector<std::string> imp_veh, sql::Connection * con, sqlite3 * backup_db){
 
     getcwd(this->cwd,sizeof(cwd));
     strcat(this->cwd, "/images"); 
     printf("using working directory %s \n", this->cwd);
-    this-> camera_device = new camera(camera_index,0,0);
+    this-> camera_device = new camera(0,0,camera_index);
     this -> livedb = livedb;
-    
+    this->imp_veh = imp_veh;
+    this->sql::Connection *con = con;
+    this-> sqlite3 *backup_db;
 }
 
 int monitor_instance::monitor(){
@@ -42,7 +44,7 @@ int monitor_instance::analyze_plates(){
         strcpy(path,this->cwd);
         strcat(path,"/");
         strcat(path,dp->d_name);
-        printf("found plate %s \n",dp->d_name );
+        //printf("found plate %s \n",dp->d_name );
         if (path[strlen(path) -1] == '.') continue;
 
         image_names.push_back(std::string(dp->d_name));
@@ -101,18 +103,14 @@ int monitor_instance::analyze_plates(){
 
         }
     }
-   
-    printf("right before delete \n");
-    char imageloc[100] = {"\0"};
+
+    closedir(images_folder);
+    char imageloc[100] = {NULL};
     for (int l = 0; l < image_names.size(); l++){
         strcpy(imageloc,this->cwd);
-        strcpy(imageloc, "/images/");
-        printf(" image location: %s\n",image_names[l].c_str());
+        strcat(imageloc, "/");
         strcat(imageloc, image_names[l].c_str());
-        strcat(imageloc,'\0');
-
-        printf("%s",imageloc); 
-     //   remove(imageloc);
+        remove(imageloc);
     }
 
 } 

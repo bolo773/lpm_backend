@@ -9,7 +9,7 @@ cam1->grab_images();
 
 
 
-monitor_instance firstmonitor(0,0);
+monitor_instance firstmonitor(1,1);
 
 firstmonitor.monitor();
 

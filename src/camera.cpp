@@ -80,7 +80,7 @@ std::vector<std::string> camera::grab_images(){
         strcat(strname, ".png");
         imwrite(strname,frame,compression_params);
 
-        printf("created file: %s \n", strname);
+        //printf("created file: %s \n", strname);
         filenames.push_back(std::string(strname));
 
         if( frame.empty() ) break; // end of video stream

@@ -115,7 +115,7 @@ int wait_for_motion(VideoCapture* cap){
      }
 
 
-	   if(pixdif > 45000) return 1;
+	   if(pixdif > 35000) return 1;
    }
 }
 
