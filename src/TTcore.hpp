@@ -14,20 +14,20 @@
 
 class TTcore{
 
-sql::Driver * driver;
-sql::Connection * con;
-sql::Statement * stmt;
-sql::ResultSet * res;
-sqlite3 *backup_db;
+    sql::Driver * driver;
+    sql::Connection * con;
+    sql::Statement * stmt;
+    sql::ResultSet * res;
+    sqlite3 *backup_db;
 
-std::vector<std::string> imp_veh;
+    std::vector<std::string> imp_veh;
 
-monitor_instance main_thread;
+    monitor_instance main_thread;
 
 public:
 
-TTcore();
-init();
-start();
+    TTcore();
+    int init();
+    int start();
 
 };
