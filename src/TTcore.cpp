@@ -39,11 +39,11 @@ TTcore::TTcore(){
         while (res->next()) {
         std::cout << "got important tag" << res->getString(2);
         imp_veh.push_back(res->getString(2));
-    }
+    } 
 
     //create the main monitor thread
 
-    }
+    } else printf(" live db is not online %d \n",livedb);
 
     this->main_thread = monitor_instance(1,livedb,imp_veh,this->con, this->backup_db);
 }

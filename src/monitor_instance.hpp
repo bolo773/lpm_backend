@@ -31,6 +31,10 @@ class monitor_instance {
     int monitor();
     int analyze_plates();
     int upload_file(std::string filename);
+    int recognize_plates();
+    int upload_data_live(std::string, bool, std::string);
+    int upload_data_backup(std::string, bool, std::string);
+    int store_file_to_backup(std::string filename);
     monitor_instance();
     monitor_instance(int camera_index, int livedb,std::vector<std::string> imp_veh, sql::Connection *con, sqlite3 * backup_db);
      
