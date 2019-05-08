@@ -7,6 +7,12 @@
 #include <algorithm>
 #include <iterator>
 #include <sqlite3.h>
+#include <curl/curl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <unistd.h>
 
 
 class monitor_instance {
@@ -24,6 +30,7 @@ class monitor_instance {
 
     int monitor();
     int analyze_plates();
+    int upload_file(std::string filename);
     monitor_instance();
     monitor_instance(int camera_index, int livedb,std::vector<std::string> imp_veh, sql::Connection *con, sqlite3 * backup_db);
      

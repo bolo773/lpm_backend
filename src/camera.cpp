@@ -66,7 +66,7 @@ std::vector<std::string> camera::grab_images(){
         std::tm* now = std::localtime(&t1);
 
         char time_buff[50];
-        strftime(time_buff, sizeof(time_buff), "%Y-%m-%d:%H:%M:%S", now);
+        strftime(time_buff, sizeof(time_buff), "%Y-%m-%d%H%M%S", now);
 
         this->video_capture >> frame;
         std::vector<int> compression_params;
