@@ -8,15 +8,15 @@ int camera::monitor() {
     float threshold = 50.0f;
     cv::Mat diffImage;
     int pixdif = 0;
-
-    while(pixdif < 65000){
+    //default 65000
+    while(pixdif < 10000){
 
         ticks1=clock();
 
         ticks2=ticks1;
 
         //wait between every initial capture
-        while((ticks2/CLOCKS_PER_SEC-ticks1/CLOCKS_PER_SEC)<.1) ticks2=clock();
+        while((ticks2/CLOCKS_PER_SEC-ticks1/CLOCKS_PER_SEC)< .1 ) ticks2=clock();
 
         this->video_capture >> frame1;
 
@@ -29,13 +29,13 @@ int camera::monitor() {
 
         cv::Mat foregroundMask = cv::Mat::zeros(diffImage.rows, diffImage.cols, CV_8UC1);
 
-        for(int j=0; j<diffImage.rows; ++j)
-        for(int i=0; i<diffImage.cols; ++i) {
+        for(int j=diffImage.rows/3; j<(diffImage.rows*2)/3; ++j)
+        for(int i=diffImage.cols/3; i<(diffImage.cols*2)/3; ++i) {
             cv::Vec3b pix = diffImage.at<cv::Vec3b>(j,i);
             dist = (pix[0]*pix[0] + pix[1]*pix[1] + pix[2]*pix[2]);
             if(dist>threshold) {
                pixdif ++;
-           }
+          }
         }
     }
     return 1;
@@ -43,7 +43,7 @@ int camera::monitor() {
 
 std::vector<std::string> camera::grab_images(){
    
-    printf("writing to file\n"); 
+    printf("scanning...\n"); 
     std::vector<std::string> filenames; 
     char cwd[PATH_MAX];
     getcwd(cwd,sizeof(cwd));

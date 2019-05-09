@@ -45,7 +45,7 @@ TTcore::TTcore(){
 
     } else printf(" live db is not online %d \n",livedb);
 
-    this->main_thread = monitor_instance(1,livedb,imp_veh,this->con, this->backup_db);
+    this->main_thread = monitor_instance(0,livedb,imp_veh,this->con, this->backup_db);
 }
 
 int TTcore::start(){

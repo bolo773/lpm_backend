@@ -103,14 +103,12 @@ int monitor_instance::upload_data_backup(std::string plate_number, bool flagged,
         sqlite3_step( stmt_backup );
         sqlite3_finalize(stmt_backup);
         
-                
-
 
 }
 
 int monitor_instance::store_file_to_backup(std::string filename){
-    ifstream f1 ("images/" + filename.c_str(),fstream::binary);
-    ofstream f2 ("image_backup/" + filename.c_str(), fstream::trunc | fstream::binary);
+    std::ifstream f1 ("images/" + filename,std::fstream::binary);
+    std::ofstream f2 ("image_backup/" + filename, std::fstream::trunc | std::fstream::binary);
     f2 << f1.rdbuf();
 
 }
@@ -185,7 +183,7 @@ int monitor_instance::analyze_plates(){
     std::vector<alpr::AlprPlate> detected_plates;
     std::vector<std::string> image_names;
     openalpr.setDefaultRegion("md");
-
+    int flagged = 0;
     if(openalpr.isLoaded() == false){
             std::cerr << "Error loading openALPR" << std::endl;
             return 1;
@@ -245,17 +243,18 @@ int monitor_instance::analyze_plates(){
                 }
 
         }
-               int flagged = 0;
+//               int flagged = 0;
                for (int j =0; j < imp_veh.size(); j++) {
 
-                         if(imp_veh[j] == best_fit.characters) printf("\n\n\n\n\n FLAGGED VEHICLE!!!!!!!!!!!!\n\n\n\n\n");
+                         if(imp_veh[j] == best_fit.characters) {
+                         printf("\n\n\n\n\n FLAGGED VEHICLE!!!!!!!!!!!!\n\n\n\n\n");
                          flagged = 1;
+                         }
 
                      }
  
         if (livedb == 1){
             std::cout << "best fit is :" << best_fit.characters << std::endl;
-            int flagged = 0;
             upload_data_live(best_fit.characters, flagged, std::to_string(best_fit.overall_confidence));
         //time_t now;
         //closedir(images_folder);
