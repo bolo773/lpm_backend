@@ -1,6 +1,6 @@
 #include "TTcore.hpp"
 
-TTcore::TTcore(){
+TTcore::TTcore(int camera_index){
     int livedb = 1;
     std::string sql_q = "";
     sqlite3 *backup_db;
@@ -45,7 +45,7 @@ TTcore::TTcore(){
 
     } else printf(" live db is not online %d \n",livedb);
 
-    this->main_thread = monitor_instance(0,livedb,imp_veh,this->con, this->backup_db);
+    this->main_thread = monitor_instance(camera_index ,livedb ,imp_veh ,this->con, this->backup_db);
 }
 
 int TTcore::start(){

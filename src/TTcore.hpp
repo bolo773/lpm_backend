@@ -19,14 +19,14 @@ class TTcore{
     sql::Statement * stmt;
     sql::ResultSet * res;
     sqlite3 *backup_db;
-
+    int camera_index;
     std::vector<std::string> imp_veh;
 
     monitor_instance main_thread;
 
 public:
 
-    TTcore();
+    TTcore(int);
     int init();
     int start();
 

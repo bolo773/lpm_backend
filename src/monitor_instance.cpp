@@ -25,6 +25,7 @@ static size_t read_callback(void *ptr, size_t size, size_t nmemb, FILE *stream)
 
 int monitor_instance::upload_data_live(std::string plate_number, bool flagged, std::string accuracy){
         
+        int result = 1;
         std::string sql_q("");
         time_t t = time(0);
         tm* now = localtime(&t);
@@ -60,8 +61,10 @@ int monitor_instance::upload_data_live(std::string plate_number, bool flagged, s
         std::cout << "# ERR: " << e.what();
         std::cout << " (MySQL error code: " << e.getErrorCode();
         std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;
+        if(e.getErrorCode() > 0)
+        result = 0;
         }
-
+    return result;
 }
 
 
@@ -150,6 +153,25 @@ int monitor_instance::upload_file(std::string filename){
 
     curl_global_cleanup();
     return 0;
+
+}
+
+
+int test_conn(){
+
+    FILE *output;
+    if(!(output = popen("/sbin/route -n | grep -c '^0\\.0\\.0\\.0'","r"))){
+        return 0;
+    }
+    unsigned int i;
+    fscanf(output,"%u",&i);
+    if(i==0)
+           return 0;
+    else if(i==1)
+        return 1;
+
+    pclose(output);
+
 
 }
 
@@ -243,7 +265,6 @@ int monitor_instance::analyze_plates(){
                 }
 
         }
-//               int flagged = 0;
                for (int j =0; j < imp_veh.size(); j++) {
 
                          if(imp_veh[j] == best_fit.characters) {
@@ -252,10 +273,15 @@ int monitor_instance::analyze_plates(){
                          }
 
                      }
+
+        
+
  
-        if (livedb == 1){
             std::cout << "best fit is :" << best_fit.characters << std::endl;
-            upload_data_live(best_fit.characters, flagged, std::to_string(best_fit.overall_confidence));
+        
+        if (test_conn()){
+
+        upload_data_live(best_fit.characters, flagged, std::to_string(best_fit.overall_confidence));
         //time_t now;
         //closedir(images_folder);
         char imageloc[100] = {NULL};
@@ -313,46 +339,6 @@ int monitor_instance::analyze_plates(){
 
        
 
-        /*
-        time_t t = time(0);
-        tm* now = localtime(&t);
-        char buff[50];
-        strftime(buff, sizeof(buff), "%Y-%m-%d %H:%M:%S", now);
-
-        sql_q = "";
-        sql_q.append("insert into raw_backup (tag_number, flagged, timestamp, confidence) values ('");
-       //actual tag number
-        sql_q.append(best_fit.characters);
-        sql_q.append("', ");
-        sql_q.append("'");
-
-        //std::ostringstream date_stream(buff);
-        //sql_q.append(date_stream.str());
-        
-        //is it flagged?
-        if (flagged)
-        sql_q.append("', TRUE,  ");
-        else sql_q.append("', FALSE, ");
-
-        std::ostringstream date_stream(buff);
-        sql_q.append(date_stream.str());
-
-        //the confidence
-        sql_q.append(std::to_string(best_fit.overall_confidence));
-        sql_q.append(");");
-
-
-        sqlite3_stmt * stmt_backup;
-        sqlite3_prepare( db, sql_q.c_str(), -1, &stmt_backup, NULL );
-        sqlite3_step( stmt_backup );
-        sqlite3_finalize(stmt);
-
-
-
-        //removing images
-        remove("images/*");
-        char imageloc[100] = {NULL};
-        */
         }
     }
         closedir(images_folder);
