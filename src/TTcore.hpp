@@ -11,7 +11,6 @@
 #include <iterator>
 #include <sqlite3.h>
 
-
 class TTcore{
 
     sql::Driver * driver;
@@ -29,5 +28,6 @@ public:
     TTcore(int);
     int init();
     int start();
+    int interpreter(std::string input);
 
 };

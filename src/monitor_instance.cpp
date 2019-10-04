@@ -83,8 +83,6 @@ int monitor_instance::upload_data_backup(std::string plate_number, bool flagged,
         sql_q.append(plate_number);
         sql_q.append("', ");
 
-        //std::ostringstream date_stream(buff);
-        //sql_q.append(date_stream.str());
         
         //is it flagged?
         if (flagged)
@@ -181,7 +179,6 @@ monitor_instance::monitor_instance(int camera_index, int livedb, std::vector<std
     strcat(this->cwd, "/images"); 
     printf("using working directory %s \n", this->cwd);
     this-> camera_device = new camera(0,0,camera_index);
-    //this-> camera_device = new camera(0,0,camera_index);
     this -> livedb = livedb;
     this->imp_veh = imp_veh;
     this->con = con;
@@ -195,6 +192,15 @@ int monitor_instance::monitor(){
         analyze_plates();
     }
 }
+
+
+int monitor_instance::start(){
+    std::thread mainthread(&monitor_instance::monitor,this);
+    mainthread.detach();
+    
+
+}
+
 
 int monitor_instance::analyze_plates(){
 
@@ -220,7 +226,6 @@ int monitor_instance::analyze_plates(){
         strcpy(path,this->cwd);
         strcat(path,"/");
         strcat(path,dp->d_name);
-        //printf("found plate %s \n",dp->d_name );
         if (path[strlen(path) -1] == '.') continue;
 
         image_names.push_back(std::string(dp->d_name));
@@ -282,8 +287,6 @@ int monitor_instance::analyze_plates(){
         if (test_conn()){
 
         upload_data_live(best_fit.characters, flagged, std::to_string(best_fit.overall_confidence));
-        //time_t now;
-        //closedir(images_folder);
         char imageloc[100] = {NULL};
 
         sql_q = "";

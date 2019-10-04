@@ -13,7 +13,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
-
+#include <thread>
 
 class monitor_instance {
     
@@ -35,6 +35,7 @@ class monitor_instance {
     int upload_data_live(std::string, bool, std::string);
     int upload_data_backup(std::string, bool, std::string);
     int store_file_to_backup(std::string filename);
+    int start();
     monitor_instance();
     monitor_instance(int camera_index, int livedb,std::vector<std::string> imp_veh, sql::Connection *con, sqlite3 * backup_db);
      

@@ -48,8 +48,39 @@ TTcore::TTcore(int camera_index){
     this->main_thread = monitor_instance(camera_index ,livedb ,imp_veh ,this->con, this->backup_db);
 }
 
-int TTcore::start(){
-    this->main_thread.monitor();
-    
+
+int TTcore::interpreter(std::string input ){
+    std::istringstream input_stream(input);
+    std::vector<std::string> tokens{std::istream_iterator<std::string>{input_stream},
+    std::istream_iterator<std::string>{}};
+
+
+   for(int i = 0; i < tokens.size(); i++){
+
+      if(tokens[i] == "help"){
+
+          std::cout << "help_printed \n";
+          return 1;
+
+
+      } else if(tokens[i] == "expUSB" ){
+          system("expUSB");
+      }
+
+   }
 
 }
+
+int TTcore::start(){
+    
+    std::string input;
+    this->main_thread.start();
+    while(1){
+    std::getline (std::cin,input);
+    this->interpreter(input);
+    std::cout << "TTCore:>>>";
+    }
+
+}
+     
+

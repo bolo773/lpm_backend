@@ -84,7 +84,7 @@ std::vector<std::string> camera::grab_images(){
         filenames.push_back(std::string(strname));
 
         if( frame.empty() ) break; // end of video stream
-        imshow("TTCore v.1:)", frame);
+       // imshow("TTCore v.1:)", frame);
         if( cv::waitKey(10) == 27 ) break; // stop capturing by pressing ESC
     }
 
