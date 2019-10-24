@@ -1,5 +1,17 @@
 #include "camera.hpp"
 
+int camera::pop_camera(){
+
+    images.pop_back();
+    return 1;
+
+}
+
+cv::Mat camera::get_next_plate(){
+
+    return images.back();
+}
+
 int camera::monitor() {
 
     cv::Mat frame1, frame2;
@@ -29,6 +41,8 @@ int camera::monitor() {
 
         cv::Mat foregroundMask = cv::Mat::zeros(diffImage.rows, diffImage.cols, CV_8UC1);
 
+
+        printf("\n %d  %d\n",diffImage.rows, diffImage.cols );
         for(int j=diffImage.rows/3; j<(diffImage.rows*2)/3; ++j)
         for(int i=diffImage.cols/3; i<(diffImage.cols*2)/3; ++i) {
             cv::Vec3b pix = diffImage.at<cv::Vec3b>(j,i);
@@ -43,7 +57,10 @@ int camera::monitor() {
 
 std::vector<std::string> camera::grab_images(){
    
-    printf("scanning...\n"); 
+    printf("scanning...\n");
+
+
+    std::cout << "can write to this" ;
     std::vector<std::string> filenames; 
     char cwd[PATH_MAX];
     getcwd(cwd,sizeof(cwd));
@@ -54,6 +71,8 @@ std::vector<std::string> camera::grab_images(){
     char index[2] = {'\0'};
 
 
+    printf(" \n initialization complete caturing images \n");
+
     for(int i = 0; i < 3 ; i++) {
         cv::Mat frame;
         cv::Mat frame_pre_processed;
@@ -61,7 +80,8 @@ std::vector<std::string> camera::grab_images(){
         int LEN = 125;
         double THETA = 0;
         int snr = 700;
-    
+        std::vector<uchar> img_buff;
+ 
         std::time_t t1 = std::time(0);
         std::tm* now = std::localtime(&t1);
 
@@ -78,10 +98,21 @@ std::vector<std::string> camera::grab_images(){
         strcat(strname,index);
         strcat(strname ,time_buff);
         strcat(strname, ".png");
-        imwrite(strname,frame,compression_params);
+        // imencode(".png",frame,img_buff);
+
+        //this is compression info and such we still need this to save it locally
+        //imwrite(strname,frame,compression_params);
+        printf(" \n adding file names to strings to array \n"); 
 
         //printf("created file: %s \n", strname);
         filenames.push_back(std::string(strname));
+
+        std::cout << "adding frame to vector";
+
+        printf("\n adding frame to vector \n");
+        images.push_back(frame); 
+
+        printf("\n images have been added to frame  \n");
 
         if( frame.empty() ) break; // end of video stream
        // imshow("TTCore v.1:)", frame);
@@ -92,9 +123,15 @@ std::vector<std::string> camera::grab_images(){
 
 }
 
+std::vector<cv::Mat>  camera::get_saved_images(){
+    return this->images;
+
+}
+
 camera::camera(int sensitivity, int index, int camera_index){
     this->sensitivity=sensitivity;
     this->index = index;
     this->camera_index = index;
     this->video_capture.open(camera_index);
 }
+

@@ -18,13 +18,14 @@ class camera {
     int sensitivity;
     int camera_index;
     cv::VideoCapture video_capture;
-
+    std::vector<cv::Mat> images;
     public:
 
-    
+    cv::Mat get_next_plate();
+    int pop_camera();    
     std::vector<std::string> grab_images();
     int monitor();
-
+    std::vector<cv::Mat> get_saved_images();
     camera(int sensitivity, int index, int camera_index);
 
 };

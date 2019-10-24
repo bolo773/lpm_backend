@@ -1,13 +1,13 @@
-#include "monitor_instance.hpp"
+#include "insert_queue.hpp"
+#include "veh_entry.hpp"
 
-
-monitor_instance::monitor_instance(){
+insert_queue::insert_queue(){
 
 this-> camera_device = NULL;
 this->livedb = 0;
 this->con = NULL;
 this->backup_db = NULL;
-
+this->queue = {};
 }
 
 
@@ -23,7 +23,7 @@ static size_t read_callback(void *ptr, size_t size, size_t nmemb, FILE *stream)
     return retcode;
 }
 
-int monitor_instance::upload_data_live(std::string plate_number, bool flagged, std::string accuracy){
+int insert_queue::upload_data_live(std::string plate_number, bool flagged, std::string accuracy){
         
         int result = 1;
         std::string sql_q("");
@@ -69,7 +69,7 @@ int monitor_instance::upload_data_live(std::string plate_number, bool flagged, s
 
 
 
-int monitor_instance::upload_data_backup(std::string plate_number, bool flagged, std::string accuracy){
+int insert_queue::upload_data_backup(std::string plate_number, bool flagged, std::string accuracy){
        
         std::string sql_q("");
         time_t t = time(0);
@@ -107,14 +107,14 @@ int monitor_instance::upload_data_backup(std::string plate_number, bool flagged,
 
 }
 
-int monitor_instance::store_file_to_backup(std::string filename){
+int insert_queue::store_file_to_backup(std::string filename){
     std::ifstream f1 ("images/" + filename,std::fstream::binary);
     std::ofstream f2 ("image_backup/" + filename, std::fstream::trunc | std::fstream::binary);
     f2 << f1.rdbuf();
 
 }
 
-int monitor_instance::upload_file(std::string filename){
+int insert_queue::upload_file(std::string filename){
 
     CURL *curl;
     CURLcode res;
@@ -173,37 +173,41 @@ int test_conn(){
 
 }
 
-monitor_instance::monitor_instance(int camera_index, int livedb, std::vector<std::string> imp_veh, sql::Connection * con, sqlite3 * backup_db){
+insert_queue::insert_queue(int livedb, std::vector<std::string> imp_veh, sql::Connection * con, sqlite3 * backup_db){
 
     getcwd(this->cwd,sizeof(cwd));
     strcat(this->cwd, "/images"); 
     printf("using working directory %s \n", this->cwd);
-    this-> camera_device = new camera(0,0,camera_index);
     this -> livedb = livedb;
     this->imp_veh = imp_veh;
     this->con = con;
     this->backup_db = backup_db;
 }
 
-int monitor_instance::monitor(){
+int insert_queue::monitor(){
     while(1){
         camera_device->monitor();
-        printf("\n before grab images  \n");
         camera_device->grab_images();
-        printf("\n analyze plates  \n");
         analyze_plates();
     }
 }
 
-int monitor_instance::start(){
+
+int insert_queue::start(){
     std::thread mainthread(&monitor_instance::monitor,this);
     mainthread.detach();
+    
+
+}
+
+int insert_queue::add_queue(veh_entry vehicle){
+
+   this->queue.push_back(vehicle);
 
 }
 
 
-int monitor_instance::analyze_plates(){
-
+int insert_queue::analyze_plates(){
 
     std::string sql_q("");
     alpr::Alpr openalpr("us","/etc/openalpr/openalpr.conf");
@@ -223,70 +227,16 @@ int monitor_instance::analyze_plates(){
     DIR* images_folder = opendir(this->cwd);
     struct dirent * dp;
 
-   
-     //old janky version
-     //while ((dp = readdir(images_folder)) != NULL) {
+    while (this->queue.size()!= 0 ) {
+        strcpy(path,this->cwd);
+        strcat(path,"/");
+        strcat(path,dp->d_name);
+        if (path[strlen(path) -1] == '.') continue;
 
-     while (camera_device->get_saved_images().size() > 0) {
-
-       printf("still looping");
-       // strcpy(path,this->cwd);
-       // strcat(path,"/");
-       // strcat(path,dp->d_name);
-       // if (path[strlen(path) -1] == '.') continue;
-        
-        //this should be generated in the camera with those names
-        //image_names.push_back(std::string(dp->d_name));
-        cv::Mat plate = camera_device->get_next_plate();
-
-        //char plate_arr[] = plate.data;
-
-        printf("size of queue: %d \n",camera_device->get_saved_images().size());
-        camera_device->pop_camera();
-        std::vector<uchar> imbuff;
-        
-        std::vector<int> compression_params;
-        compression_params.push_back(CV_IMWRITE_PNG_COMPRESSION);
-        compression_params.push_back(9);
-
-        imencode(".png",plate,imbuff,compression_params);
-
-        std::vector<char> char_buff;
-        char_buff.assign(imbuff.data(),imbuff.data() + imbuff.size());       
-
- 
-       //char * imbuff_char = (char *) malloc(imbuff.size());
-        //memcpy (imbuff_char, imbuff.data(),imbuff.size());
-        //char* imbuff_char = (char *) &imbuff[0];
-        
-
-
-        //int n = sizeof(plate.data) / sizeof(plate.data[0]);
-        //printf("\n real size %d \n", n);
-
-        printf("imbuff size: %d", imbuff.size());
- 
-        std::vector<char> imbuff_vec(plate.rows * plate.cols * sizeof(uint8_t)*3);
-        if (plate.isContinuous()) imbuff_vec.assign(plate.data,plate.data + plate.total()*3 );
-        else exit(0);
-        //imbuff_vec.insert(imbuff_vec.begin,std::begin(plate_arr),std::end(plate_arr));
-         
-        cv::Mat check(plate.rows,plate.cols,CV_8UC3,&imbuff_vec[0]);
-
-        printf("\n imvuff char size %d  \n",909);
-        printf("\n imbuff_vec size  %d  \n", imbuff_vec.size());
-
-        imshow("test",check);
-        //imshow("test",plate);
- 
-       // alpr::AlprResults results = openalpr.recognize(path);
-        alpr::AlprResults results = openalpr.recognize(char_buff);
-
-        printf("\n before loop  \n");
+        image_names.push_back(std::string(dp->d_name));
+        alpr::AlprResults results = openalpr.recognize(path);
         if(results.plates.size() <= 0) continue;
             for (int i = 0; i < results.plates.size();i++){
-                printf("\n ---------------------------------------- plate found --------------------------- \n");
-
                 alpr::AlprPlateResult plate = results.plates[i];
                 std::cout << "plate" << i << ":" 
                 << plate.topNPlates.size() << 
@@ -314,8 +264,6 @@ int monitor_instance::analyze_plates(){
             }
 
     }
-
-
 
     if (detected_plates.size() > 0 ) {
         alpr::AlprPlate best_fit = detected_plates[0];
@@ -386,9 +334,9 @@ int monitor_instance::analyze_plates(){
 
             //store files
     printf("uploading files\n");
-       // for (int l = 0; l < image_names.size(); l++){
-        //    upload_file(image_names[l]);
-       // }
+        for (int l = 0; l < image_names.size(); l++){
+            upload_file(image_names[l]);
+        }
 
      } else {
 

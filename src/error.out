@@ -1,0 +1,17 @@
+camera.cpp: In member function ‘std::vector<std::__cxx11::basic_string<char> > camera::grab_images()’:
+camera.cpp:63:30: warning: converting to non-pointer type ‘char’ from NULL [-Wconversion-null]
+     char strname[128] = {NULL};
+                              ^
+monitor_instance.cpp: In member function ‘int monitor_instance::analyze_plates()’:
+monitor_instance.cpp:221:27: warning: converting to non-pointer type ‘char’ from NULL [-Wconversion-null]
+     char path[100] = {NULL};
+                           ^
+monitor_instance.cpp:268:29: warning: unknown escape sequence: '\040'
+                          << "t\ confidence: " << 
+                             ^
+monitor_instance.cpp:315:35: warning: converting to non-pointer type ‘char’ from NULL [-Wconversion-null]
+         char imageloc[100] = {NULL};
+                                   ^
+monitor_instance.cpp:373:35: warning: converting to non-pointer type ‘char’ from NULL [-Wconversion-null]
+         char imageloc[100] = {NULL};
+                                   ^
