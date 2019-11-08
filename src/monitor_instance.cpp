@@ -330,7 +330,8 @@ int monitor_instance::analyze_plates(){
             //store files
     printf("uploading files\n");
         for (int l = 0; l < image_names.size(); l++){
-            upload_file(image_names[l]);
+          //l std::thread uthread(&monitor_instance::upload_file,this,image_names[l]);
+           upload_file(image_names[l]);
         }
 
      } else {
