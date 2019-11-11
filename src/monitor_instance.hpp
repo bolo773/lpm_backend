@@ -30,7 +30,7 @@ class monitor_instance {
 
     int monitor();
     int analyze_plates();
-    int upload_file(std::string filename);
+    std::string upload_file(char *, int);
     int recognize_plates();
     int upload_data_live(std::string, bool, std::string);
     int upload_data_backup(std::string, bool, std::string);

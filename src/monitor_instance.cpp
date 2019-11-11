@@ -1,5 +1,8 @@
 #include "monitor_instance.hpp"
-
+#include <stdio.h>
+#include <string.h>
+#include <curl/curl.h>
+#include <nlohmann/json.hpp>
 
 int write_to_disk(cv::Mat plate,int ind){
 
@@ -57,15 +60,6 @@ static size_t read_callback(void *ptr, size_t size, size_t nmemb, FILE *stream)
 }
 */
 
-
-
-
-
-#include <stdio.h>
-#include <string.h>
-#include <curl/curl.h>
-#include <nlohmann/json.hpp>
-
 /* silly test data to POST */
 static char data[100] = {'\0'};
 struct WriteThis {
@@ -93,6 +87,12 @@ static size_t read_callback(void *dest, size_t size, size_t nmemb, void *userp)
   return 0; /* no more data left to deliver */
 }
 
+static size_t write_callback( char * contents, size_t size, size_t nmemb, void * userp){
+
+    ((std::string*) userp) -> append((char * )contents, size * nmemb);
+    return size * nmemb;
+
+}
 
 int upload_data(std::string tag_number, std::string confidence, std::string timestamp, std::string flagged)
 {
@@ -189,53 +189,6 @@ int monitor_instance::upload_data_live(std::string plate_number, bool flagged, s
         std::ostringstream date_stream(buff);
 
         upload_data(plate_number, accuracy, date_stream.str(), "0");
-        
-
-
-
-        /* 
-        int result = 1;
-        std::string sql_q("");
-        time_t t = time(0);
-        tm* now = localtime(&t);
-
-        char buff[50];
-        strftime(buff, sizeof(buff), "%Y-%m-%d %H:%M:%S", now);
-
-        sql_q = "";
-        sql_q.append("insert into raw_data (tag_number,t_stamp, flagged, accuracy) values ('");
-        sql_q.append(plate_number);
-        sql_q.append("', ");
-        sql_q.append("'");
-
-        std::ostringstream date_stream(buff);
-
-        sql_q.append(date_stream.str());
-
-        if (flagged)
-        sql_q.append("', TRUE,  ");
-        else sql_q.append("', FALSE, ");
-        sql_q.append(accuracy);
-        sql_q.append(");");
-        std::cout << sql_q << '\n';
-        flagged = 0;
-        try{
-            this->stmt = this->con->createStatement();
-            this->res = this->stmt->executeQuery(sql_q.c_str());
-        }
-
-        catch (sql::SQLException &e) {
-        std::cout << "# ERR: SQLException in " << __FILE__;
-        std::cout << "(" << __FUNCTION__ << ") on line "<< __LINE__ << std::endl;
-        std::cout << "# ERR: " << e.what();
-        std::cout << " (MySQL error code: " << e.getErrorCode();
-        std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;
-        if(e.getErrorCode() > 0)
-        result = 0;
-        }
-
-    */
-
     
     return 1;
 }
@@ -287,43 +240,80 @@ int monitor_instance::store_file_to_backup(std::string filename){
 
 }
 
-int monitor_instance::upload_file(std::string filename){
+std::string monitor_instance::upload_file(char * data,int data_size){
 
-    CURL *curl;
-    CURLcode res;
-    FILE *hd_src;
-    struct stat file_info;
-    curl_off_t fsize;
-    struct curl_slist *headerlist = NULL;
-    std::string command = "RNFR plate_generic.png";
-    std::string command2 = "RNTO " + filename;
-
-    hd_src = fopen((std::string("images/") + filename).c_str() ,"rb");
-   
-     curl = curl_easy_init();
+  CURL *curl;
+  CURLcode res;
   
-    if(curl) {
-        headerlist = curl_slist_append(headerlist, command.c_str());
-        headerlist = curl_slist_append(headerlist, command2.c_str());
+  std::string readbuffer;
+  struct WriteThis wt;
 
-        printf("curl is active\n");
-        curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_callback);
+  wt.readptr = data;
+  wt.sizeleft = data_size;
 
-        curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
+  /* In windows, this will init the winsock stuff */
+  res = curl_global_init(CURL_GLOBAL_DEFAULT);
+  /* Check for errors */
+  if(res != CURLE_OK) {
+    fprintf(stderr, "curl_global_init() failed: %s\n",
+            curl_easy_strerror(res));
+    return "curl failed no upload";
+  }
 
-        curl_easy_setopt(curl, CURLOPT_URL, "ftp://184.173.179.109/plate_generic.png");
-        curl_easy_setopt(curl, CURLOPT_USERNAME, "ttcore");
-        curl_easy_setopt(curl, CURLOPT_PASSWORD , "infiniti");
+  /* get a curl handle */
+  curl = curl_easy_init();
+  if(curl) {
+    /* First set the URL that is about to receive our POST. */
+    curl_easy_setopt(curl, CURLOPT_URL, "http://104.154.27.143/image_upload.php?tag_id=1");
 
-        curl_easy_setopt(curl, CURLOPT_POSTQUOTE, headerlist);
-        curl_easy_setopt(curl, CURLOPT_READDATA, hd_src);
+    /* Now specify we want to POST data */
+    curl_easy_setopt(curl, CURLOPT_POST, 1L);
 
-       res =  curl_easy_perform(curl);
-        curl_easy_cleanup(curl);
-    }
+    /* we want to use our own read function */
+    curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_callback);
 
-    curl_global_cleanup();
-    return 0;
+    curl_easy_setopt(curl,CURLOPT_WRITEFUNCTION, write_callback);
+
+
+    curl_easy_setopt(curl,CURLOPT_WRITEDATA, &readbuffer);
+
+    /* pointer to pass to our read function */
+    curl_easy_setopt(curl, CURLOPT_READDATA, &wt);
+
+    /* get verbose debug output please */
+    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+  
+    
+
+    struct curl_slist *hs = NULL;
+    hs = curl_slist_append(hs,"Content-Type: application/blob");
+    curl_easy_setopt(curl,CURLOPT_HTTPHEADER,hs);
+
+
+    std::string readbuffer;
+
+     /* Set the expected POST size. If you want to POST large amounts of data,
+       consider CURLOPT_POSTFIELDSIZE_LARGE */
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)wt.sizeleft);
+    /* Perform the request, res will get the return code */
+    res = curl_easy_perform(curl);
+
+
+
+    printf("%s", readbuffer.c_str());
+
+
+    printf("\n  retcode:   %d \n", res);
+    /* Check for errors */
+    if(res != CURLE_OK)
+      fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+
+    /* always cleanup */
+    curl_easy_cleanup(curl);
+  }
+  curl_global_cleanup();
+  return readbuffer;
+
 
 }
 
@@ -380,8 +370,9 @@ int monitor_instance::analyze_plates(){
     alpr::Alpr openalpr("us","/etc/openalpr/openalpr.conf");
     openalpr.setTopN(1);
 
+    std::vector< std::string> image_names;
+
     std::vector<alpr::AlprPlate> detected_plates;
-    std::vector<std::string> image_names;
     openalpr.setDefaultRegion("md");
     int flagged = 0;
     if(openalpr.isLoaded() == false){
@@ -395,101 +386,66 @@ int monitor_instance::analyze_plates(){
     struct dirent * dp;
 
    
-     //old janky version
-     //while ((dp = readdir(images_folder)) != NULL) {
 
-        while (camera_device->get_saved_images().size() > 0) {
+    while (camera_device->get_saved_images().size() > 0) {
 
-            printf("still looping");
-       // strcpy(path,this->cwd);
-       // strcat(path,"/");
-       // strcat(path,dp->d_name);
-       // if (path[strlen(path) -1] == '.') continue;
-        
         //this should be generated in the camera with those names
-        //image_names.push_back(std::string(dp->d_name));
-            cv::Mat plate = camera_device->get_next_plate();
+        cv::Mat plate = camera_device->get_next_plate();
 
-        //char plate_arr[] = plate.data;
-
-            printf("size of queue: %d \n",camera_device->get_saved_images().size());
-            camera_device->pop_camera();
-            std::vector<uchar> imbuff;
+        printf("size of queue: %d \n",camera_device->get_saved_images().size());
+        camera_device->pop_camera();
+        std::vector<uchar> imbuff;
         
-            std::vector<int> compression_params;
-            compression_params.push_back(CV_IMWRITE_PNG_COMPRESSION);
-            compression_params.push_back(9);
+        std::vector<int> compression_params;
+        compression_params.push_back(CV_IMWRITE_PNG_COMPRESSION);
+        compression_params.push_back(9);
 
-            imencode(".png",plate,imbuff,compression_params);
+        imencode(".png",plate,imbuff,compression_params);
 
-            std::vector<char> char_buff;
-            char_buff.assign(imbuff.data(),imbuff.data() + imbuff.size());       
+        std::vector<char> char_buff;
+        char_buff.assign(imbuff.data(),imbuff.data() + imbuff.size());       
 
- 
-       //char * imbuff_char = (char *) malloc(imbuff.size());
-        //memcpy (imbuff_char, imbuff.data(),imbuff.size());
-        //char* imbuff_char = (char *) &imbuff[0];
-        
-
-
-        //int n = sizeof(plate.data) / sizeof(plate.data[0]);
-        //printf("\n real size %d \n", n);
-
-            printf("imbuff size: %d", imbuff.size());
- 
-            std::vector<char> imbuff_vec(plate.rows * plate.cols * sizeof(uint8_t)*3);
-            if (plate.isContinuous()) imbuff_vec.assign(plate.data,plate.data + plate.total()*3 );
-            else exit(0);
-        //imbuff_vec.insert(imbuff_vec.begin,std::begin(plate_arr),std::end(plate_arr));
+        printf("imbuff size: %d", imbuff.size());
+        int buff_size = plate.rows * plate.cols * sizeof(uint8_t)*3;  
+        std::vector<char> imbuff_vec(plate.rows * plate.cols * sizeof(uint8_t)*3);
+        if (plate.isContinuous()) imbuff_vec.assign(plate.data,plate.data + plate.total()*3 );
+        else exit(0);
          
-            cv::Mat check(plate.rows,plate.cols,CV_8UC3,&imbuff_vec[0]);
+        cv::Mat check(plate.rows,plate.cols,CV_8UC3,&imbuff_vec[0]);
 
-            imshow("test",check);
-        //imshow("test",plate);
+        imshow("test",check);
  
-       // alpr::AlprResults results = openalpr.recognize(path);
-            alpr::AlprResults results = openalpr.recognize(char_buff);
+        alpr::AlprResults results = openalpr.recognize(char_buff);
 
-            printf("\n before loop  \n");
-            if(results.plates.size() <= 0) continue;
-
-
-            //for every plate found print each top 1 result
-                for (int i = 0; i < results.plates.size();i++){
-                    printf("\n ---------------------------------------- plate found --------------------------- \n");
-
-                    alpr::AlprPlateResult plate_alpr = results.plates[i];
-                    std::cout << "\n plate" << i << ":" << plate_alpr.topNPlates.size() << "result " << std::endl;
+        printf("\n before loop  \n");
+        if(results.plates.size() <= 0) continue;
+       
+         
+        std::string image_name = upload_file(char_buff.data(),char_buff.size());
+        using json = nlohmann::json;
 
 
-                    //alpr::AlprPlate best_fit_plate;
+        json resp_json = json::parse(image_name);
 
-                   /* for (int k = 0; k < plate.topNPlates.size(); k++){
+        std::string current_fname = resp_json["filename"];
+        printf( "\n response:%s \n", current_fname.c_str());
+        
+        
 
-                         std::cout << "   : " << plate.topNPlates[k].characters << "t\ confidence: " << 
-                         plate.topNPlates[k].overall_confidence;
-                         std::cout << " pattern match: " 
-                         << plate.topNPlates[k].matches_template << std::endl;
+        for (int i = 0; i < results.plates.size();i++){
+            printf("\n ---------------------------------------- plate found --------------------------- \n");
 
-                         std::time_t t = std::time(0);
-                         std::tm* now = std::localtime(&t);
-                         std::cout << (now->tm_year +1900)
-                         << (now->tm_mon + 1) << '-'
-                         << now->tm_mday
-                         << "\n";
+            alpr::AlprPlateResult plate_alpr = results.plates[i];
+            std::cout << "\n plate" << i << ":" << plate_alpr.topNPlates.size() << "result " << std::endl;
 
-                    }*/
+            detected_plates.push_back(plate_alpr.topNPlates[0]);
+            printf("\n found plate: %s\n", plate_alpr.topNPlates[0].characters);
 
-                     detected_plates.push_back(plate_alpr.topNPlates[0]);
-                     printf("\n found plate: %s\n", plate_alpr.topNPlates[0].characters);
-
-                     write_to_disk(plate,i);
+            //write_to_disk(plate,i);
                          
             }
 
     }
-
-
 
     if (detected_plates.size() > 0 ) {
         //alpr::AlprPlate best_fit = detected_plates[0];
@@ -509,73 +465,25 @@ int monitor_instance::analyze_plates(){
       //     }
 
         //             }
-
-        
         //std::cout << "best fit is :" << best_fit.characters << std::endl;
-        
         if (test_conn()){
 
-
             for(int j = 0; j < detected_plates.size();j++){
-
-                upload_data_live(detected_plates[j].characters, flagged, std::to_string(detected_plates[j].overall_confidence));
-
-        }
         
-        char imageloc[100] = {NULL};
-
-        sql_q = "";
-        sql_q = "select max(id) from raw_data;";
-   
-        try{
-            this->stmt = this->con->createStatement();
-            this->res = this->stmt->executeQuery(sql_q.c_str());
-        }
-        catch(sql::SQLException &e){
-            std::cout << "# ERR: SQLException in " << __FILE__;
-            std::cout << "(" << __FUNCTION__ << ") on line "<< __LINE__ << std::endl;
-            std::cout << "# ERR: " << e.what();
-            std::cout << " (MySQL error code: " << e.getErrorCode();
-            std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;
-            
-        }
-        res->next();
-        int id =  res->getInt(1);
-
-        for (int l = 0; l < image_names.size(); l++){
-
-        sql_q = "";
-        sql_q.append("insert into images (fname,cid) values (");
-        sql_q.append((std::string("'//184.173.179.109/") + image_names[l] +"'," + std::to_string(id) + ")").c_str()); 
-
-         try{
-             this->stmt = this->con->createStatement();
-             this->res = this->stmt->executeQuery(sql_q.c_str());
-        }
-        catch(sql::SQLException &e){
-            std::cout << "# ERR: SQLException in " << __FILE__;
-            std::cout << "(" << __FUNCTION__ << ") on line "<< __LINE__ << std::endl;
-            std::cout << "# ERR: " << e.what();
-            std::cout << " (MySQL error code: " << e.getErrorCode();
-            std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;
-
-        }
-    }
-
-            //store files
-    printf("uploading files\n");
+                upload_data_live(detected_plates[j].characters, flagged, std::to_string(detected_plates[j].overall_confidence));
+                //upload_file(char_buff, buff_size);
+            }
+        //store files
+        printf("uploading files\n");
        // for (int l = 0; l < image_names.size(); l++){
-        //    upload_file(image_names[l]);
        // }
 
-     } else {
+        } else {
 
      //   upload_data_backup(best_fit.characters, flagged,std::to_string(best_fit.overall_confidence));
       //  for (int l = 0; l < image_names.size(); l++){
         //    store_file_to_backup(image_names[l]);
         //    }
-
-       
 
         }
     }
