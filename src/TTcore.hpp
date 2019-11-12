@@ -29,5 +29,5 @@ public:
     int init();
     int start();
     int interpreter(std::string input);
-
+    std::string jsonify_local();
 };

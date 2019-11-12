@@ -1,5 +1,11 @@
 #include "TTcore.hpp"
-
+#include <sys/ioctl.h>
+#include <termios.h>
+#include <stdint.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <error.h>
 TTcore::TTcore(int camera_index){
     int livedb = 1;
     std::string sql_q = "";
@@ -47,13 +53,19 @@ TTcore::TTcore(int camera_index){
 
     this->main_thread = monitor_instance(camera_index ,livedb ,imp_veh ,this->con, this->backup_db);
 }
+/*
+std::string jsonify_local(){
 
+   std::string res("returned fine");
+   return  res;
 
+}
+*/
 int TTcore::interpreter(std::string input ){
     std::istringstream input_stream(input);
     std::vector<std::string> tokens{std::istream_iterator<std::string>{input_stream},
     std::istream_iterator<std::string>{}};
-
+   
 
    for(int i = 0; i < tokens.size(); i++){
 
@@ -64,6 +76,8 @@ int TTcore::interpreter(std::string input ){
 
 
       } else if(tokens[i] == "expUSB" ){
+
+          //jsonify_local();
           system("expUSB");
       }
 
@@ -71,11 +85,48 @@ int TTcore::interpreter(std::string input ){
 
 }
 
+int serial_monitor(){
+
+
+    int fd,n,i;
+    char buf[64] = "";
+    struct termios toptions;
+    fd = open("/dev/ttyACMO", O_RDWR | O_NOCTTY);
+    printf("fd opened as");
+    tcgetattr(fd,&toptions);
+    cfsetispeed(&toptions,B9600);
+    cfsetospeed(&toptions,B9600);
+
+    toptions.c_cflag &= ~PARENB;
+    toptions.c_cflag  &= ~CSTOPB;
+    toptions.c_cflag &= ~CSIZE;
+    toptions.c_cflag |= CS8;
+    toptions.c_cflag |= ICANON;
+    tcsetattr(fd,TCSANOW,&toptions);
+    write(fd,"0",1);
+    n = read(fd,buf,64);
+    buf[n] = 0;
+
+    while(1){
+
+        n = read(fd,buf,64);
+        buf[n] = 0;
+        if(n > 0){
+            std::string input(buf);
+            interpreter(input);
+        }
+    }
+}
+
 int TTcore::start(){
-    
+
     std::string input;
     this->main_thread.start();
+    std::thread serial_mon(&serial_monitor);
+    serial_mon.detach();
+
     while(1){
+
     std::getline (std::cin,input);
     this->interpreter(input);
     std::cout << "TTCore:>>>";

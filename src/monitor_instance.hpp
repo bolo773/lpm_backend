@@ -29,12 +29,16 @@ class monitor_instance {
     public:
 
     int monitor();
-    int analyze_plates();
     std::string upload_file(char *, int);
+    int analyze_plates();
+    int analyze_plates_offline();
     int recognize_plates();
-    int upload_data_live(std::string, bool, std::string);
-    int upload_data_backup(std::string, bool, std::string);
+
+    std::string insert_image_backup(std::string,std::string);
+    std::string upload_data_live(std::string, bool, std::string);
+    std::string save_data_backup(std::string, bool, std::string);
     int store_file_to_backup(std::string filename);
+    std::string write_to_disk(cv::Mat);
     int start();
     monitor_instance();
     monitor_instance(int camera_index, int livedb,std::vector<std::string> imp_veh, sql::Connection *con, sqlite3 * backup_db);
