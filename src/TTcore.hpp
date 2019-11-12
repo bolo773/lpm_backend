@@ -28,6 +28,7 @@ public:
     TTcore(int);
     int init();
     int start();
+    int serial_monitor();
     int interpreter(std::string input);
     std::string jsonify_local();
 };

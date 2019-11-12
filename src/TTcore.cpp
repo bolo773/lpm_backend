@@ -85,7 +85,7 @@ int TTcore::interpreter(std::string input ){
 
 }
 
-int serial_monitor(){
+int TTcore::serial_monitor(){
 
 
     int fd,n,i;
@@ -113,7 +113,7 @@ int serial_monitor(){
         buf[n] = 0;
         if(n > 0){
             std::string input(buf);
-            interpreter(input);
+            this->interpreter(input);
         }
     }
 }
@@ -122,7 +122,7 @@ int TTcore::start(){
 
     std::string input;
     this->main_thread.start();
-    std::thread serial_mon(&serial_monitor);
+    std::thread serial_mon(&TTcore::serial_monitor,this);
     serial_mon.detach();
 
     while(1){
