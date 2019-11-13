@@ -91,7 +91,7 @@ int TTcore::serial_monitor(){
     int fd,n,i;
     char buf[64] = "";
     struct termios toptions;
-    fd = open("/dev/ttyACMO", O_RDWR | O_NOCTTY);
+    fd = open("/dev/ttyACM0", O_RDWR | O_NOCTTY);
     printf("fd opened as");
     tcgetattr(fd,&toptions);
     cfsetispeed(&toptions,B9600);
@@ -105,15 +105,19 @@ int TTcore::serial_monitor(){
     tcsetattr(fd,TCSANOW,&toptions);
     write(fd,"0",1);
     n = read(fd,buf,64);
-    buf[n] = 0;
 
+    if(n < 0) printf("error: %s", strerror(errno));
+    buf[n] = 0;
+    printf("\nserial monitor initialized \n");
     while(1){
 
         n = read(fd,buf,64);
         buf[n] = 0;
         if(n > 0){
             std::string input(buf);
-            this->interpreter(input);
+            printf("\n using this command: %s !!!!!!!!!!!!!! string size: %d \n",input.c_str(), n);
+            this->interpreter("expUSB");
+
         }
     }
 }

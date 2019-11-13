@@ -42,7 +42,7 @@ int camera::monitor() {
         cv::Mat foregroundMask = cv::Mat::zeros(diffImage.rows, diffImage.cols, CV_8UC1);
 
 
-        printf("\n %d  %d\n",diffImage.rows, diffImage.cols );
+        //printf("\n %d  %d\n",diffImage.rows, diffImage.cols );
         for(int j=diffImage.rows/3; j<(diffImage.rows*2)/3; ++j)
         for(int i=diffImage.cols/3; i<(diffImage.cols*2)/3; ++i) {
             cv::Vec3b pix = diffImage.at<cv::Vec3b>(j,i);

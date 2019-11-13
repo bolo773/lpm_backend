@@ -619,7 +619,7 @@ int monitor_instance::analyze_plates(){
          
         cv::Mat check(plate.rows,plate.cols,CV_8UC3,&imbuff_vec[0]);
 
-        imshow("test",check);
+        //imshow("test",check);
  
         alpr::AlprResults results = openalpr.recognize(char_buff);
 
