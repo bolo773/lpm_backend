@@ -58,12 +58,10 @@ std::string monitor_instance::insert_image_backup(std::string image_name, std::s
     sql_q.append(id.c_str());
     sql_q.append(");");
 
-    printf("storing into backup \n");
     sqlite3_stmt * stmt_backup;
     sqlite3_prepare( this->backup_db, sql_q.c_str(), -1, &stmt_backup, NULL );
     sqlite3_step( stmt_backup );
     sqlite3_finalize(stmt_backup);
-    printf("\n success \n");
     std::string res("we have finished");
     return res;
 
@@ -194,7 +192,6 @@ std::string insert_image(std::string image_name, std::string id)
 
     std::string json_data = info.dump();
 
-    printf("information for insert: %s", json_data.c_str());
     std::string readbuffer;
     const std::string::size_type size = json_data.size();
 
@@ -273,7 +270,6 @@ std::string monitor_instance::upload_data_live(std::string plate_number, bool fl
 
     std::string res =  upload_data(plate_number, accuracy, date_stream.str(), "0");
     
-    //printf("\n %s \n", res.c_str() );
 
     return res;
     
@@ -310,7 +306,6 @@ std::string  monitor_instance::save_data_backup(std::string plate_number, bool f
     sql_q.append(");");
 
     std::cout  <<"-------- query: " << sql_q << "\n";
-    printf("storing from backup \n");
     sqlite3_stmt * stmt_backup;
     sqlite3_prepare( this->backup_db, sql_q.c_str(), -1, &stmt_backup, NULL );
 
@@ -489,7 +484,6 @@ int monitor_instance::analyze_plates_offline(){
     while (camera_device->get_saved_images().size() > 0) {
         //this should be generated in the camera with those names
         cv::Mat plate = camera_device->get_next_plate();
-        printf("size of queue: %d \n",camera_device->get_saved_images().size());
         camera_device->pop_camera();
         std::vector<uchar> imbuff;
         std::vector<int> compression_params;
@@ -501,7 +495,6 @@ int monitor_instance::analyze_plates_offline(){
         std::vector<char> char_buff;
         char_buff.assign(imbuff.data(),imbuff.data() + imbuff.size());
 
-        printf("imbuff size: %d", imbuff.size());
         int buff_size = plate.rows * plate.cols * sizeof(uint8_t)*3;
         std::vector<char> imbuff_vec(plate.rows * plate.cols * sizeof(uint8_t)*3);
         if (plate.isContinuous()) imbuff_vec.assign(plate.data,plate.data + plate.total()*3 );
@@ -513,13 +506,11 @@ int monitor_instance::analyze_plates_offline(){
 
         alpr::AlprResults results = openalpr.recognize(char_buff);
         //differences should start around here
-        printf("\n before loop  \n");
         if(results.plates.size() <= 0) continue;
 
         std::string current_fname = write_to_disk(plate);
         image_names.push_back(current_fname);
 
-        printf("file saved: %s", current_fname.c_str());
 
         for (int i = 0; i < results.plates.size();i++){
             printf("\n ---------------------------------------- plate found --------------------------- \n");
@@ -540,12 +531,9 @@ int monitor_instance::analyze_plates_offline(){
         for(int j = 0; j < detected_plates.size();j++){
 
             std::string tag_id = save_data_backup(detected_plates[j].characters, flagged, std::to_string(detected_plates[j].overall_confidence));
-            printf("tag_id   : %s \n", tag_id.c_str());
             for (int k = 0; k < image_names.size(); k++) {
 
-               printf("\n %d \n",k);
                insert_image_backup(image_names[k],tag_id);
-               printf("\n image just inserted \n");
 
             }
 
@@ -553,7 +541,6 @@ int monitor_instance::analyze_plates_offline(){
 
     }
 
-    printf("\n past that shitshow\n");
 /*
     char imageloc[100] = {NULL};
     for (int l = 0; l < image_names.size(); l++){
@@ -598,7 +585,7 @@ int monitor_instance::analyze_plates(){
         //this should be generated in the camera with those names
         cv::Mat plate = camera_device->get_next_plate();
 
-        printf("size of queue: %d \n",camera_device->get_saved_images().size());
+       // printf("size of queue: %d \n",camera_device->get_saved_images().size());
         camera_device->pop_camera();
         std::vector<uchar> imbuff;
         
@@ -611,7 +598,6 @@ int monitor_instance::analyze_plates(){
         std::vector<char> char_buff;
         char_buff.assign(imbuff.data(),imbuff.data() + imbuff.size());       
 
-        printf("imbuff size: %d", imbuff.size());
         int buff_size = plate.rows * plate.cols * sizeof(uint8_t)*3;  
         std::vector<char> imbuff_vec(plate.rows * plate.cols * sizeof(uint8_t)*3);
         if (plate.isContinuous()) imbuff_vec.assign(plate.data,plate.data + plate.total()*3 );
@@ -623,7 +609,6 @@ int monitor_instance::analyze_plates(){
  
         alpr::AlprResults results = openalpr.recognize(char_buff);
 
-        printf("\n before loop  \n");
         if(results.plates.size() <= 0) continue;
        
          
@@ -634,7 +619,6 @@ int monitor_instance::analyze_plates(){
         json resp_json = json::parse(image_name);
 
         std::string current_fname = resp_json["filename"];
-        printf( "\n response:%s \n", resp_json.dump());
         image_names.push_back(current_fname); 
         
 

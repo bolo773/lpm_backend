@@ -6,6 +6,29 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <error.h>
+#include <nlohmann/json.hpp>
+#include <iostream>
+#include <fstream>
+
+static int callback (void * res,int argc, char ** argv, char **azColName){
+    using json = nlohmann::json;
+
+    static int j = 0;
+
+    static nlohmann::json tags_json;
+    int i;
+    for(i=0;i<argc;i++){
+
+        tags_json[j][azColName[i]] = argv[i] ? argv[i] : "NULL";
+    }
+    std::string fina = tags_json.dump();
+    *(std::string *)res = fina;
+
+    j++;
+    return 0;
+
+}
+
 TTcore::TTcore(int camera_index){
     int livedb = 1;
     std::string sql_q = "";
@@ -53,14 +76,35 @@ TTcore::TTcore(int camera_index){
 
     this->main_thread = monitor_instance(camera_index ,livedb ,imp_veh ,this->con, this->backup_db);
 }
-/*
-std::string jsonify_local(){
 
-   std::string res("returned fine");
-   return  res;
+std::string TTcore::jsonify_local(){
+
+    using json = nlohmann::json;
+    char * zErrMsg = 0;
+    json tag;
+    int j = 0;
+    std::string fina;
+    sqlite3_exec(backup_db,"select * from raw_backup inner join image_backup on pid=id",callback,(void*)&fina,&zErrMsg);
+    std::ofstream file_out;
+    file_out.open("images/backup_data.json");
+    
+    file_out << fina;
+    file_out.close();
+
+
+    sqlite3_stmt * stmt_backup;
+    sqlite3_prepare( this->backup_db, "delete from raw_backup;", -1, &stmt_backup, NULL );
+    sqlite3_step(stmt_backup);
+    sqlite3_prepare( this->backup_db, "delete from image_backup;", -1, &stmt_backup, NULL );
+    sqlite3_step(stmt_backup);
+    sqlite3_finalize(stmt_backup);
+   
+    printf("%s\n",fina.c_str()); 
+    return fina;
+ 
 
 }
-*/
+
 int TTcore::interpreter(std::string input ){
     std::istringstream input_stream(input);
     std::vector<std::string> tokens{std::istream_iterator<std::string>{input_stream},
@@ -77,7 +121,7 @@ int TTcore::interpreter(std::string input ){
 
       } else if(tokens[i] == "expUSB" ){
 
-          //jsonify_local();
+          jsonify_local();
           system("expUSB");
       }
 
@@ -92,7 +136,7 @@ int TTcore::serial_monitor(){
     char buf[64] = "";
     struct termios toptions;
     fd = open("/dev/ttyACM0", O_RDWR | O_NOCTTY);
-    printf("fd opened as");
+    printf("fd opened as: ");
     tcgetattr(fd,&toptions);
     cfsetispeed(&toptions,B9600);
     cfsetospeed(&toptions,B9600);
@@ -131,9 +175,9 @@ int TTcore::start(){
 
     while(1){
 
-    std::getline (std::cin,input);
-    this->interpreter(input);
-    std::cout << "TTCore:>>>";
+        std::getline (std::cin,input);
+        this->interpreter(input);
+        std::cout << "TTCore:>>>";
     }
 
 }

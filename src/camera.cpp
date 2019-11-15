@@ -42,7 +42,6 @@ int camera::monitor() {
         cv::Mat foregroundMask = cv::Mat::zeros(diffImage.rows, diffImage.cols, CV_8UC1);
 
 
-        //printf("\n %d  %d\n",diffImage.rows, diffImage.cols );
         for(int j=diffImage.rows/3; j<(diffImage.rows*2)/3; ++j)
         for(int i=diffImage.cols/3; i<(diffImage.cols*2)/3; ++i) {
             cv::Vec3b pix = diffImage.at<cv::Vec3b>(j,i);
@@ -57,7 +56,6 @@ int camera::monitor() {
 
 std::vector<std::string> camera::grab_images(){
    
-    printf("scanning...\n");
 
 
     std::cout << "can write to this" ;
@@ -71,7 +69,6 @@ std::vector<std::string> camera::grab_images(){
     char index[2] = {'\0'};
 
 
-    printf(" \n initialization complete caturing images \n");
 
     for(int i = 0; i < 3 ; i++) {
         cv::Mat frame;
@@ -102,17 +99,13 @@ std::vector<std::string> camera::grab_images(){
 
         //this is compression info and such we still need this to save it locally
         //imwrite(strname,frame,compression_params);
-        printf(" \n adding file names to strings to array \n"); 
 
-        //printf("created file: %s \n", strname);
         filenames.push_back(std::string(strname));
 
         std::cout << "adding frame to vector";
 
-        printf("\n adding frame to vector \n");
         images.push_back(frame); 
 
-        printf("\n images have been added to frame  \n");
 
         if( frame.empty() ) break; // end of video stream
        // imshow("TTCore v.1:)", frame);
