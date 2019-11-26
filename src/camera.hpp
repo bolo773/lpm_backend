@@ -11,7 +11,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
+#ifndef _camera
 class camera {
 
     int index;
@@ -20,7 +20,7 @@ class camera {
     cv::VideoCapture video_capture;
     std::vector<cv::Mat> images;
     public:
-
+    int free_images();
     cv::Mat get_next_plate();
     int pop_camera();    
     std::vector<std::string> grab_images();
@@ -29,3 +29,6 @@ class camera {
     camera(int sensitivity, int index, int camera_index);
 
 };
+
+#define _camera
+#endif

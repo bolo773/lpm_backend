@@ -127,4 +127,7 @@ camera::camera(int sensitivity, int index, int camera_index){
     this->camera_index = index;
     this->video_capture.open(camera_index);
 }
+int camera::free_images(){
+    images.clear();
 
+}
