@@ -17,18 +17,20 @@
 
 #ifndef _analyzer
 class  analyzer{
-    
+     
     char cwd[PATH_MAX];
     int livedb;
     sqlite3 * backup_db; 
     std::vector <cv::Mat> plates;
     public:
 
+    static std::vector <std::string> imp_veh;   
+    static int set_impveh(std::vector<std::string> imp_veh);
     std::string upload_file(char *, int);
     int analyze_plates();
     int analyze_plates_offline();
     int recognize_plates();
-
+ 
     std::string insert_image_backup(std::string,std::string);
     std::string upload_data_live(std::string, bool, std::string);
     std::string save_data_backup(std::string, bool, std::string);
@@ -37,8 +39,8 @@ class  analyzer{
     int analyze();
     int insert();
     analyzer();
-    analyzer(std::vector<cv::Mat>, sqlite3 * backup_db,int);
-     
+    analyzer(std::vector<cv::Mat>, sqlite3 * backup_db,int, std::vector<std::string>);
+    int live_db(); 
 };
 
 #define _analyzer

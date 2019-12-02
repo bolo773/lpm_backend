@@ -10,6 +10,82 @@
 #include <iostream>
 #include <fstream>
 
+int test_conn(){
+
+    FILE *output;
+    if(!(output = popen("/sbin/route -n | grep -c '^0\\.0\\.0\\.0'","r"))){
+        return 0;
+    }
+    unsigned int i;
+    fscanf(output,"%u",&i);
+    
+    pclose(output);
+    if(i==0)
+           return 0;
+    else if(i==1)
+        return 1;
+
+
+}
+
+
+static size_t write_callback( char * contents, size_t size, size_t nmemb, void * userp){
+
+    ((std::string*) userp) -> append((char * )contents, size * nmemb);
+    return size * nmemb;
+
+}
+
+std::vector<std::string> get_impveh()
+{
+
+    using json = nlohmann::json;
+    std::vector<std::string> final_results;
+    json tags;
+
+    std::string readbuffer;
+
+
+    CURL *curl;
+    CURLcode res;
+
+    /* In windows, this will init the winsock stuff */
+    res = curl_global_init(CURL_GLOBAL_DEFAULT);
+    /* Check for errors */
+    if(res != CURLE_OK) {
+        fprintf(stderr, "curl_global_init() failed: %s\n",curl_easy_strerror(res));
+        return final_results;
+  }
+
+    /* get a curl handle */
+    curl = curl_easy_init();
+    if(curl) {
+        curl_easy_setopt(curl, CURLOPT_URL, "http://104.154.27.143/imp_veh.php");
+        curl_easy_setopt(curl, CURLOPT_POST, 1L);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readbuffer);
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+        res = curl_easy_perform(curl);
+
+        if(res != CURLE_OK) 
+        fprintf(stderr, "curl_easy_perform() failed: %s\n",curl_easy_strerror(res));
+        curl_easy_cleanup(curl);
+    }
+    curl_global_cleanup();
+    
+    printf( "%s\n", readbuffer.c_str() );
+    tags = json::parse(readbuffer);
+    //for(json::iterator it = tags.begin() ; it != tags.end() ; ++it ){
+    for (int it = 0; it < tags.size(); it ++){    
+    printf( "got important tag : %s\n",tags[it]["tag_number"].get<std::string>().c_str());
+
+    final_results.push_back(tags[it]["tag_number"].get<std::string>().c_str());
+    }
+
+    return final_results;
+}
+
+                              
 static int callback (void * res,int argc, char ** argv, char **azColName){
     using json = nlohmann::json;
 
@@ -30,29 +106,30 @@ static int callback (void * res,int argc, char ** argv, char **azColName){
 }
 
 TTcore::TTcore(int camera_index){
-    int livedb = 1;
+    int livedb = test_conn();
     std::string sql_q = "";
     sqlite3 *backup_db;
-    
+    printf("the test_conn worked\n"); 
 
-    sql_q.append("select * from flagged_vehicles");
-    this->driver = get_driver_instance();
-    try{
-        this->con = driver->connect("tcp://184.173.179.108:3306", "bolo7_tag_user", "infiniti");
-        this->con->setSchema("bolo773_ttcore");
-        this->stmt = con->createStatement();
-        this->res = stmt->executeQuery(sql_q.c_str());
-    }
+   this -> imp_veh = std::vector<std::string>();
+   // sql_q.append("select * from flagged_vehicles");
+   // this->driver = get_driver_instance();
+   // try{
+   //     this->con = driver->connect("tcp://184.173.179.108:3306", "bolo7_tag_user", "infiniti");
+   //     this->con->setSchema("bolo773_ttcore");
+   //     this->stmt = con->createStatement();
+   //     this->res = stmt->executeQuery(sql_q.c_str());
+   // }
 
-    catch (sql::SQLException &e) {
-    std::cout << "# ERR: SQLException in " << __FILE__;
-    std::cout << "(" << __FUNCTION__ << ") on line "<< __LINE__ << std::endl;
-    std::cout << "# ERR: " << e.what();
-    std::cout << " (MySQL error code: " << e.getErrorCode();
-    std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;
-    livedb = 0;
+   // catch (sql::SQLException &e) {
+   // std::cout << "# ERR: SQLException in " << __FILE__;
+   // std::cout << "(" << __FUNCTION__ << ") on line "<< __LINE__ << std::endl;
+   // std::cout << "# ERR: " << e.what();
+   // std::cout << " (MySQL error code: " << e.getErrorCode();
+   // std::cout << ", SQLState: " << e.getSQLState() << " )" << std::endl;
+   // livedb = 0;
 
-    }
+   // }
 
     int rc = sqlite3_open("backup.db", &backup_db);
     this->backup_db = backup_db;
@@ -65,16 +142,24 @@ TTcore::TTcore(int camera_index){
 
     //populate the important vehicles list
     if (livedb == 1){
-        while (res->next()) {
-        std::cout << "got important tag" << res->getString(2);
-        imp_veh.push_back(res->getString(2));
-    } 
+        //while (res->next()) {
+        //std::cout << "got important tag" << res->getString(2);
+        //imp_veh.push_back(res->getString(2));
+       
+     try{
+         this->imp_veh = get_impveh(); 
+        } catch(...) {
+            printf("Cannot get live db info!\n");
+            livedb = 0;
+        }
+
+    //} 
 
     //create the main monitor thread
 
     } else printf(" live db is not online %d \n",livedb);
 
-    this->main_thread = monitor_instance(camera_index ,livedb ,imp_veh ,this->con, this->backup_db);
+    this->main_thread = monitor_instance(camera_index ,livedb ,this->imp_veh,this->con, this->backup_db);
 }
 
 std::string TTcore::jsonify_local(){

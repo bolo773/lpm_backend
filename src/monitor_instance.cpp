@@ -10,13 +10,16 @@
 #include <boost/lexical_cast.hpp>
 #include <mutex>
 
+
 int monitor_instance::data_insertion_loop () {
 
     while(1){
     if(insert_qeue.size() != 0){
-      insert_qeue.back().analyze_plates();
-      insert_qeue.pop_back();
-      }
+
+          if(insert_qeue.back().live_db()) insert_qeue.back().analyze_plates();
+          else insert_qeue.back().analyze_plates_offline();
+          insert_qeue.pop_back();
+      } 
     }
    return 1;
 }
@@ -51,37 +54,37 @@ monitor_instance::monitor_instance(int camera_index, int livedb, std::vector<std
 
     getcwd(this->cwd,sizeof(cwd));
     strcat(this->cwd, "/images"); 
-    printf("using working directory %s \n", this->cwd);
+    printf("\nusing working directory %s \n", this->cwd);
     this-> camera_device = new camera(0,0,camera_index);
     this -> livedb = livedb;
-    this->imp_veh = imp_veh;
+    printf("\n can get past dir init \n");
+    this->imp_veh = std::vector<std::string>(imp_veh);
+    printf("\n can get past vector\n");
     this->con = con;
     this->backup_db = backup_db;
     this-> insert_qeue = std::vector<analyzer>();
+    analyzer::set_impveh(imp_veh);
 }
 
 int monitor_instance::monitor(){
 
     while(1){
         camera_device->monitor();
-        printf("\n before grab images  \n");
         camera_device->grab_images();
         std::vector<cv::Mat> plates = camera_device->get_saved_images();
-        printf("\n analyze plates %d \n", plates.size());
-        
+       
+       // printf( " current:  %s   \n",imp_veh[0].c_str());
         if(test_conn()){
             printf("\nsystem online\n");
-            analyzer result = analyzer(plates,this->backup_db,1);
-            printf("\n new analyzer created \n");
+            analyzer result = analyzer(plates,this->backup_db,1, this->imp_veh);
             insert_qeue.push_back(result);    
-            //result.analyze_plates();
         } else {
             printf("\nsystem offline\n");
-            analyzer result = analyzer(plates,this->backup_db,0);
+            analyzer result = analyzer(plates,this->backup_db,0, this->imp_veh);
             insert_qeue.push_back(result);
-            //result.analyze_plates_offline();
         }
         camera_device->free_images();
+       
     }
 }
 

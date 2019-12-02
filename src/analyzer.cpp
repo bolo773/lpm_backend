@@ -11,6 +11,13 @@
 #include <openssl/evp.h>
 #include <openssl/err.h>
 
+std::vector<std::string> analyzer::imp_veh;
+
+int analyzer::live_db(){
+return this->livedb;
+
+}
+
 std::string analyzer::write_to_disk(cv::Mat plate){
 
     boost::uuids::uuid uuid = boost::uuids::random_generator()();
@@ -137,41 +144,24 @@ std::string upload_data(std::string tag_number, std::string confidence, std::str
     /* get a curl handle */
     curl = curl_easy_init();
     if(curl) {
-        /* First set the URL that is about to receive our POST. */
         curl_easy_setopt(curl, CURLOPT_URL, "http://104.154.27.143/insert.php");
-
-        /* Now specify we want to POST data */
         curl_easy_setopt(curl, CURLOPT_POST, 1L);
-
-        /* we want to use our own read function */
         curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_callback);
-
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
-
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readbuffer); 
-
-        /* pointer to pass to our read function */
         curl_easy_setopt(curl, CURLOPT_READDATA, &wt);
-
-        /* get verbose debug output please */
         curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
         struct curl_slist *hs = NULL;
         hs = curl_slist_append(hs,"Content-Type: application/json");
         curl_easy_setopt(curl,CURLOPT_HTTPHEADER,hs);
 
-         /* Set the expected POST size. If you want to POST large amounts of data,
-         consider CURLOPT_POSTFIELDSIZE_LARGE */
         curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)wt.sizeleft);
 
-        /* Perform the request, res will get the return code */
         res = curl_easy_perform(curl);
 
-
-        /* Check for errors */
         if(res != CURLE_OK) fprintf(stderr, "curl_easy_perform() failed: %s\n",curl_easy_strerror(res));
 
-        /* always cleanup */
         curl_easy_cleanup(curl);
     }
     curl_global_cleanup();
@@ -267,7 +257,7 @@ std::string analyzer::upload_data_live(std::string plate_number, bool flagged, s
     std::ostringstream date_stream(buff);
 
 
-    std::string res =  upload_data(plate_number, accuracy, date_stream.str(), "0");
+    std::string res =  upload_data(plate_number, accuracy, date_stream.str(), flagged ? "1":"0");
     
     return res;
     
@@ -423,7 +413,7 @@ std::string analyzer::upload_file(char * data,int data_size){
 }
 
 
-
+/*
 int test_conn(){
 
     FILE *output;
@@ -440,16 +430,23 @@ int test_conn(){
     pclose(output);
 
 }
-
-analyzer::analyzer( std::vector<cv::Mat> plates,sqlite3 * backup_db, int livedb){
+*/
+analyzer::analyzer( std::vector<cv::Mat> plates,sqlite3 * backup_db, int livedb, 
+std::vector<std::string> imp_veh){
 
     getcwd(this->cwd,sizeof(cwd));
     strcat(this->cwd, "/images"); 
     printf("using working directory %s \n", this->cwd);
-    //this->imp_veh = imp_veh;
     this->backup_db = backup_db;
     this->plates = plates;
     this->livedb = livedb;
+    //this->imp_veh = std::vector<std::string>(imp_veh);
+    printf(" \n can create analyzer fine \n");
+}
+
+int analyzer::set_impveh(std::vector<std::string> imp_veh_n){
+     imp_veh = imp_veh_n;
+
 }
 
 //int analyzer::start(){
@@ -478,9 +475,13 @@ int analyzer::analyze_plates_offline(){
     struct dirent * dp;
 
     while (plates.size() > 0) {
+        
+        printf("its seg faulting before the mat pop back \n");
         //this should be generated in the camera with those names
         cv::Mat plate = plates.back();
+
         plates.pop_back();
+        printf("its seg faulting after the pop back \n");
         std::vector<uchar> imbuff;
         std::vector<int> compression_params;
         compression_params.push_back(CV_IMWRITE_PNG_COMPRESSION);
@@ -520,23 +521,15 @@ int analyzer::analyze_plates_offline(){
             //write_to_disk(plate,i);
 
             }
-
     }
-
     if (detected_plates.size() > 0 ) {
         for(int j = 0; j < detected_plates.size();j++){
-
             std::string tag_id = save_data_backup(detected_plates[j].characters, flagged, std::to_string(detected_plates[j].overall_confidence));
             for (int k = 0; k < image_names.size(); k++) {
-
                insert_image_backup(image_names[k],tag_id);
-
             }
-
         }
-
     }
-
 }
 
 int analyzer::analyze_plates(){
@@ -625,14 +618,22 @@ int analyzer::analyze_plates(){
             printf("\n found plate: %s\n", plate_alpr.topNPlates[0].characters);
 
             //write_to_disk(plate,i);
-                         
+ 
             }
 
     }
 
     if (detected_plates.size() > 0 ) {
         for(int j = 0; j < detected_plates.size();j++){
-        
+       
+        flagged = 0;
+            for (int o = 0; o < imp_veh.size(); o++){
+                if(imp_veh[o] == detected_plates[j].characters) {
+                 printf("!!!!!!!!!!flagged!!!!!!!!!!!!\n");
+                 flagged = 1;
+                 }
+            }
+ 
             std::string tag_id_str = upload_data_live(detected_plates[j].characters, flagged, std::to_string(detected_plates[j].overall_confidence));
             json tag_id_json = json::parse(tag_id_str);
             std::string tag_id = tag_id_json[0]["id"];
